@@ -15,7 +15,7 @@ pip install files-to-prompt
 ```
 ## Usage
 
-To use `files-to-prompt`, simply provide the path to the directory you want to process:
+To use `files-to-prompt`, provide the path to the directory you want to process:
 
 ```bash
 files-to-prompt path/to/directory
