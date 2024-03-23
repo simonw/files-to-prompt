@@ -1,7 +1,7 @@
 import os
 import click
 from pathlib import Path
-from fnmatch import fnmatch, filter
+from fnmatch import fnmatch
 
 
 def should_ignore(path, gitignore_rules):
