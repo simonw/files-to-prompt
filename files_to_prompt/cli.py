@@ -1,7 +1,7 @@
 import os
 import click
 from pathlib import Path
-from fnmatch import fnmatch
+from fnmatch import fnmatch, filter
 
 
 def should_ignore(path, gitignore_rules):
@@ -38,8 +38,14 @@ def read_gitignore(path):
     is_flag=True,
     help="Ignore .gitignore files and include all files",
 )
+@click.option(
+    "--ignore-patterns",
+    multiple=True,
+    default=[],
+    help="List of patterns to ignore",
+)
 @click.version_option()
-def cli(path, include_hidden, ignore_gitignore):
+def cli(path, include_hidden, ignore_gitignore, ignore_patterns):
     """
     Takes a path to a folder and outputs every file in that folder,
     recursively, each one preceded with its filename like this:
@@ -72,6 +78,9 @@ def cli(path, include_hidden, ignore_gitignore):
                 for f in files
                 if not should_ignore(os.path.join(root, f), gitignore_rules)
             ]
+        
+        if ignore_patterns:
+            files = [f for f in files if not any(fnmatch(f, pattern) for pattern in ignore_patterns)]
 
         for file in files:
             file_path = os.path.join(root, file)
