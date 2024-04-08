@@ -87,11 +87,11 @@ def test_mixed_paths_with_options(tmpdir):
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
         with open("test_dir/.gitignore", "w") as f:
-            f.write("ignored.txt\n.hidden_ignored.txt")
-        with open("test_dir/ignored.txt", "w") as f:
-            f.write("This file should be ignored")
-        with open("test_dir/.hidden_ignored.txt", "w") as f:
-            f.write("This hidden file should be ignored")
+            f.write("ignored_in_gitignore.txt\n.hidden_ignored_in_gitignore.txt")
+        with open("test_dir/ignored_in_gitignore.txt", "w") as f:
+            f.write("This file should be ignored by .gitignore")
+        with open("test_dir/.hidden_ignored_in_gitignore.txt", "w") as f:
+            f.write("This hidden file should be ignored by .gitignore")
         with open("test_dir/included.txt", "w") as f:
             f.write("This file should be included")
         with open("test_dir/.hidden_included.txt", "w") as f:
@@ -101,8 +101,8 @@ def test_mixed_paths_with_options(tmpdir):
 
         result = runner.invoke(cli, ["test_dir", "single_file.txt"])
         assert result.exit_code == 0
-        assert "test_dir/ignored.txt" not in result.output
-        assert "test_dir/.hidden_ignored.txt" not in result.output
+        assert "test_dir/ignored_in_gitignore.txt" not in result.output
+        assert "test_dir/.hidden_ignored_in_gitignore.txt" not in result.output
         assert "test_dir/included.txt" in result.output
         assert "test_dir/.hidden_included.txt" not in result.output
         assert "single_file.txt" in result.output
@@ -110,8 +110,8 @@ def test_mixed_paths_with_options(tmpdir):
 
         result = runner.invoke(cli, ["test_dir", "single_file.txt", "--include-hidden"])
         assert result.exit_code == 0
-        assert "test_dir/ignored.txt" not in result.output
-        assert "test_dir/.hidden_ignored.txt" not in result.output
+        assert "test_dir/ignored_in_gitignore.txt" not in result.output
+        assert "test_dir/.hidden_ignored_in_gitignore.txt" not in result.output
         assert "test_dir/included.txt" in result.output
         assert "test_dir/.hidden_included.txt" in result.output
         assert "single_file.txt" in result.output
@@ -121,9 +121,21 @@ def test_mixed_paths_with_options(tmpdir):
             cli, ["test_dir", "single_file.txt", "--ignore-gitignore"]
         )
         assert result.exit_code == 0
-        assert "test_dir/ignored.txt" in result.output
-        assert "test_dir/.hidden_ignored.txt" not in result.output
+        assert "test_dir/ignored_in_gitignore.txt" in result.output
+        assert "test_dir/.hidden_ignored_in_gitignore.txt" not in result.output
         assert "test_dir/included.txt" in result.output
         assert "test_dir/.hidden_included.txt" not in result.output
+        assert "single_file.txt" in result.output
+        assert "Contents of single file" in result.output
+
+        result = runner.invoke(
+            cli,
+            ["test_dir", "single_file.txt", "--ignore-gitignore", "--include-hidden"],
+        )
+        assert result.exit_code == 0
+        assert "test_dir/ignored_in_gitignore.txt" in result.output
+        assert "test_dir/.hidden_ignored_in_gitignore.txt" in result.output
+        assert "test_dir/included.txt" in result.output
+        assert "test_dir/.hidden_included.txt" in result.output
         assert "single_file.txt" in result.output
         assert "Contents of single file" in result.output
