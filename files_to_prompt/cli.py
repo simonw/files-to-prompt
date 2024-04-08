@@ -23,11 +23,48 @@ def read_gitignore(path):
     return []
 
 
+def process_path(path, include_hidden, ignore_gitignore, gitignore_rules):
+    if os.path.isfile(path):
+        with open(path, "r") as f:
+            file_contents = f.read()
+        click.echo(path)
+        click.echo("---")
+        click.echo(file_contents)
+        click.echo()
+        click.echo("---")
+    elif os.path.isdir(path):
+        for root, dirs, files in os.walk(path):
+            if not include_hidden:
+                dirs[:] = [d for d in dirs if not d.startswith(".")]
+                files = [f for f in files if not f.startswith(".")]
+
+            if not ignore_gitignore:
+                gitignore_rules.extend(read_gitignore(root))
+                dirs[:] = [
+                    d
+                    for d in dirs
+                    if not should_ignore(os.path.join(root, d), gitignore_rules)
+                ]
+                files = [
+                    f
+                    for f in files
+                    if not should_ignore(os.path.join(root, f), gitignore_rules)
+                ]
+
+            for file in files:
+                file_path = os.path.join(root, file)
+                with open(file_path, "r") as f:
+                    file_contents = f.read()
+
+                click.echo(file_path)
+                click.echo("---")
+                click.echo(file_contents)
+                click.echo()
+                click.echo("---")
+
+
 @click.command()
-@click.argument(
-    "path",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
-)
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
 @click.option(
     "--include-hidden",
     is_flag=True,
@@ -39,9 +76,9 @@ def read_gitignore(path):
     help="Ignore .gitignore files and include all files",
 )
 @click.version_option()
-def cli(path, include_hidden, ignore_gitignore):
+def cli(paths, include_hidden, ignore_gitignore):
     """
-    Takes a path to a folder and outputs every file in that folder,
+    Takes one or more paths to files or directories and outputs every file,
     recursively, each one preceded with its filename like this:
 
     path/to/file.py
@@ -53,33 +90,10 @@ def cli(path, include_hidden, ignore_gitignore):
     ---
     ...
     """
-    gitignore_rules = [] if ignore_gitignore else read_gitignore(path)
-
-    for root, dirs, files in os.walk(path):
-        if not include_hidden:
-            dirs[:] = [d for d in dirs if not d.startswith(".")]
-            files = [f for f in files if not f.startswith(".")]
-
+    gitignore_rules = []
+    for path in paths:
+        if not os.path.exists(path):
+            raise click.BadArgumentUsage(f"Path does not exist: {path}")
         if not ignore_gitignore:
-            gitignore_rules.extend(read_gitignore(root))
-            dirs[:] = [
-                d
-                for d in dirs
-                if not should_ignore(os.path.join(root, d), gitignore_rules)
-            ]
-            files = [
-                f
-                for f in files
-                if not should_ignore(os.path.join(root, f), gitignore_rules)
-            ]
-
-        for file in files:
-            file_path = os.path.join(root, file)
-            with open(file_path, "r") as f:
-                file_contents = f.read()
-
-            click.echo(file_path)
-            click.echo("---")
-            click.echo(file_contents)
-            click.echo()
-            click.echo("---")
+            gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
+        process_path(path, include_hidden, ignore_gitignore, gitignore_rules)
