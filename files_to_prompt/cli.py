@@ -85,7 +85,8 @@ def process_path(
     help="Ignore .gitignore files and include all files",
 )
 @click.option(
-    "--ignore-patterns",
+    "ignore_patterns",
+    "--ignore",
     multiple=True,
     default=[],
     help="List of patterns to ignore",

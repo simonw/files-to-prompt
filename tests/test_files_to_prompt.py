@@ -91,15 +91,13 @@ def test_ignore_patterns(tmpdir):
         with open("test_dir/file_to_include.txt", "w") as f:
             f.write("This file should be included")
 
-        result = runner.invoke(cli, ["test_dir", "--ignore-patterns", "*.txt"])
+        result = runner.invoke(cli, ["test_dir", "--ignore", "*.txt"])
         assert result.exit_code == 0
         assert "test_dir/file_to_ignore.txt" not in result.output
         assert "This file should be ignored due to ignore patterns" not in result.output
         assert "test_dir/file_to_include.txt" not in result.output
 
-        result = runner.invoke(
-            cli, ["test_dir", "--ignore-patterns", "file_to_ignore.*"]
-        )
+        result = runner.invoke(cli, ["test_dir", "--ignore", "file_to_ignore.*"])
         assert result.exit_code == 0
         assert "test_dir/file_to_ignore.txt" not in result.output
         assert "This file should be ignored due to ignore patterns" not in result.output
