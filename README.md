@@ -7,6 +7,8 @@
 
 Concatenate a directory full of files into a single prompt for use with LLMs
 
+For background on this project see [Building files-to-prompt entirely using Claude 3 Opus](https://simonwillison.net/2024/Apr/8/files-to-prompt/).
+
 ## Installation
 
 Install this tool using `pip`:
