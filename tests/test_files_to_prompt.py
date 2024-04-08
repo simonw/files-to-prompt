@@ -162,3 +162,27 @@ def test_mixed_paths_with_options(tmpdir):
         assert "test_dir/.hidden_included.txt" in result.output
         assert "single_file.txt" in result.output
         assert "Contents of single file" in result.output
+
+
+def test_binary_file_warning(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/binary_file.bin", "wb") as f:
+            f.write(b"\xff")
+        with open("test_dir/text_file.txt", "w") as f:
+            f.write("This is a text file")
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+
+        stdout = result.stdout
+        stderr = result.stderr
+
+        assert "test_dir/text_file.txt" in stdout
+        assert "This is a text file" in stdout
+        assert "\ntest_dir/binary_file.bin" not in stdout
+        assert (
+            "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
+            in stderr
+        )

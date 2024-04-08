@@ -27,13 +27,17 @@ def process_path(
     path, include_hidden, ignore_gitignore, gitignore_rules, ignore_patterns
 ):
     if os.path.isfile(path):
-        with open(path, "r") as f:
-            file_contents = f.read()
-        click.echo(path)
-        click.echo("---")
-        click.echo(file_contents)
-        click.echo()
-        click.echo("---")
+        try:
+            with open(path, "r") as f:
+                file_contents = f.read()
+            click.echo(path)
+            click.echo("---")
+            click.echo(file_contents)
+            click.echo()
+            click.echo("---")
+        except UnicodeDecodeError:
+            warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
+            click.echo(click.style(warning_message, fg="red"), err=True)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -62,14 +66,20 @@ def process_path(
 
             for file in files:
                 file_path = os.path.join(root, file)
-                with open(file_path, "r") as f:
-                    file_contents = f.read()
+                try:
+                    with open(file_path, "r") as f:
+                        file_contents = f.read()
 
-                click.echo(file_path)
-                click.echo("---")
-                click.echo(file_contents)
-                click.echo()
-                click.echo("---")
+                    click.echo(file_path)
+                    click.echo("---")
+                    click.echo(file_contents)
+                    click.echo()
+                    click.echo("---")
+                except UnicodeDecodeError:
+                    warning_message = (
+                        f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
+                    )
+                    click.echo(click.style(warning_message, fg="red"), err=True)
 
 
 @click.command()
