@@ -82,6 +82,31 @@ def test_multiple_paths(tmpdir):
         assert "Contents of single file" in result.output
 
 
+def test_ignore_patterns(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file_to_ignore.txt", "w") as f:
+            f.write("This file should be ignored due to ignore patterns")
+        with open("test_dir/file_to_include.txt", "w") as f:
+            f.write("This file should be included")
+
+        result = runner.invoke(cli, ["test_dir", "--ignore-patterns", "*.txt"])
+        assert result.exit_code == 0
+        assert "test_dir/file_to_ignore.txt" not in result.output
+        assert "This file should be ignored due to ignore patterns" not in result.output
+        assert "test_dir/file_to_include.txt" not in result.output
+
+        result = runner.invoke(
+            cli, ["test_dir", "--ignore-patterns", "file_to_ignore.*"]
+        )
+        assert result.exit_code == 0
+        assert "test_dir/file_to_ignore.txt" not in result.output
+        assert "This file should be ignored due to ignore patterns" not in result.output
+        assert "test_dir/file_to_include.txt" in result.output
+        assert "This file should be included" in result.output
+
+
 def test_mixed_paths_with_options(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():

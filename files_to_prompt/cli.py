@@ -23,7 +23,9 @@ def read_gitignore(path):
     return []
 
 
-def process_path(path, include_hidden, ignore_gitignore, gitignore_rules):
+def process_path(
+    path, include_hidden, ignore_gitignore, gitignore_rules, ignore_patterns
+):
     if os.path.isfile(path):
         with open(path, "r") as f:
             file_contents = f.read()
@@ -51,6 +53,13 @@ def process_path(path, include_hidden, ignore_gitignore, gitignore_rules):
                     if not should_ignore(os.path.join(root, f), gitignore_rules)
                 ]
 
+            if ignore_patterns:
+                files = [
+                    f
+                    for f in files
+                    if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
+                ]
+
             for file in files:
                 file_path = os.path.join(root, file)
                 with open(file_path, "r") as f:
@@ -75,8 +84,14 @@ def process_path(path, include_hidden, ignore_gitignore, gitignore_rules):
     is_flag=True,
     help="Ignore .gitignore files and include all files",
 )
+@click.option(
+    "--ignore-patterns",
+    multiple=True,
+    default=[],
+    help="List of patterns to ignore",
+)
 @click.version_option()
-def cli(paths, include_hidden, ignore_gitignore):
+def cli(paths, include_hidden, ignore_gitignore, ignore_patterns):
     """
     Takes one or more paths to files or directories and outputs every file,
     recursively, each one preceded with its filename like this:
@@ -96,4 +111,6 @@ def cli(paths, include_hidden, ignore_gitignore):
             raise click.BadArgumentUsage(f"Path does not exist: {path}")
         if not ignore_gitignore:
             gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
-        process_path(path, include_hidden, ignore_gitignore, gitignore_rules)
+        process_path(
+            path, include_hidden, ignore_gitignore, gitignore_rules, ignore_patterns
+        )
