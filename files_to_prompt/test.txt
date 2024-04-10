@@ -1,3 +1,5 @@
+.\cli.py
+---
 import os
 import click
 from fnmatch import fnmatch
@@ -125,3 +127,45 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, output):
         process_path(
             path, include_hidden, ignore_gitignore, gitignore_rules, ignore_patterns, output_file
         )
+
+
+---
+.\setup.py
+---
+from setuptools import setup, find_packages
+
+setup(
+    name="files-to-prompt",
+    version="0.1",
+    packages=find_packages(),
+    include_package_data=True,
+    install_requires=[
+        'click',
+    ],
+    entry_points='''
+        [console_scripts]
+        ftp=cli:cli
+    ''',
+)
+
+
+---
+.\test.txt
+---
+
+
+---
+.\__init__.py
+---
+
+
+---
+.\__main__.py
+---
+from .cli import cli
+
+if __name__ == "__main__":
+    cli()
+
+
+---
