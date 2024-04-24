@@ -113,6 +113,7 @@ To structure the output in this way, use the optional `--xml` flag, which will p
 ```xml
 Here are some documents for you to reference for your task:
 
+<documents>
 <document path="my_directory/file1.txt">
 Contents of file1.txt
 </document>
