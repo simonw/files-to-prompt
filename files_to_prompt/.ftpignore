@@ -1,0 +1,46 @@
+# Version control directories
+.git/
+
+# Dependency directories
+node_modules/
+
+# Python virtual environments
+venv/
+env/
+.venv/
+
+# Compiled Python files
+__pycache__/
+
+# IDE settings
+.idea/
+.vscode/
+
+# Operating system generated files
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
+out/
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Package distribution files
+*.egg-info/
+dist/
+build/
+
+# Private keys and certificates
+*.pem
+*.key
+*.cert
