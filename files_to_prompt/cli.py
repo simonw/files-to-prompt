@@ -1,6 +1,7 @@
 import os
-import click
 from fnmatch import fnmatch
+
+import click
 
 
 def should_ignore(path, gitignore_rules):
@@ -23,7 +24,12 @@ def read_gitignore(path):
 
 
 def process_path(
-    path, include_hidden, ignore_gitignore, gitignore_rules, ignore_patterns
+    path,
+    include_hidden,
+    ignore_gitignore,
+    gitignore_rules,
+    ignore_patterns,
+    xml,
 ):
     if os.path.isfile(path):
         try:
@@ -69,11 +75,16 @@ def process_path(
                     with open(file_path, "r") as f:
                         file_contents = f.read()
 
-                    click.echo(file_path)
-                    click.echo("---")
-                    click.echo(file_contents)
-                    click.echo()
-                    click.echo("---")
+                    if xml:
+                        click.echo(f'<document path="{file_path}">')
+                        click.echo(file_contents)
+                        click.echo("</document>")
+                    else:
+                        click.echo(file_path)
+                        click.echo("---")
+                        click.echo(file_contents)
+                        click.echo()
+                        click.echo("---")
                 except UnicodeDecodeError:
                     warning_message = (
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
@@ -100,8 +111,13 @@ def process_path(
     default=[],
     help="List of patterns to ignore",
 )
+@click.option(
+    "--xml",
+    is_flag=True,
+    help="Output in XML format suitable for Claude's long context window.",
+)
 @click.version_option()
-def cli(paths, include_hidden, ignore_gitignore, ignore_patterns):
+def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, xml):
     """
     Takes one or more paths to files or directories and outputs every file,
     recursively, each one preceded with its filename like this:
@@ -114,6 +130,21 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns):
     path/to/file2.py
     ---
     ...
+
+    If the `--xml` flag is provided, the output will be structured as follows:
+
+    Here are some documents for you to reference for your task:
+
+    <documents>
+    <document path="path/to/file1.txt">
+    Contents of file1.txt
+    </document>
+
+    <document path="path/to/file2.txt">
+    Contents of file2.txt
+    </document>
+    ...
+    </documents>
     """
     gitignore_rules = []
     for path in paths:
@@ -121,6 +152,21 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns):
             raise click.BadArgumentUsage(f"Path does not exist: {path}")
         if not ignore_gitignore:
             gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
+        if xml and path == paths[0]:
+            click.echo("""
+Here are some documents for you to reference for your task:
+
+<documents>
+""")
+
         process_path(
-            path, include_hidden, ignore_gitignore, gitignore_rules, ignore_patterns
+            path,
+            include_hidden,
+            ignore_gitignore,
+            gitignore_rules,
+            ignore_patterns,
+            xml,
         )
+
+    if xml:
+        click.echo("</documents>")

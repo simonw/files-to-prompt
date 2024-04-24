@@ -1,5 +1,7 @@
 import os
+
 from click.testing import CliRunner
+
 from files_to_prompt.cli import cli
 
 
@@ -186,3 +188,24 @@ def test_binary_file_warning(tmpdir):
             "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
             in stderr
         )
+
+
+def test_xml_format(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2")
+
+        result = runner.invoke(cli, ["test_dir", "--xml"])
+        assert result.exit_code == 0
+        assert "<documents>" in result.output
+        assert '<document path="test_dir/file1.txt">' in result.output
+        assert "Contents of file1" in result.output
+        assert "</document>" in result.output
+        assert '<document path="test_dir/file2.txt">' in result.output
+        assert "Contents of file2" in result.output
+        assert "</document>" in result.output
+        assert "</documents>" in result.output
