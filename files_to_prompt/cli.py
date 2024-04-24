@@ -23,6 +23,27 @@ def read_gitignore(path):
     return []
 
 
+def print_path(path, content, xml):
+    if xml:
+        print_as_xml(path, content)
+    else:
+        print_default(path, content)
+
+
+def print_default(path, content):
+    click.echo(path)
+    click.echo("---")
+    click.echo(content)
+    click.echo()
+    click.echo("---")
+
+
+def print_as_xml(path, content):
+    click.echo(f'<document path="{path}">')
+    click.echo(content)
+    click.echo("</document>")
+
+
 def process_path(
     path,
     include_hidden,
@@ -34,12 +55,7 @@ def process_path(
     if os.path.isfile(path):
         try:
             with open(path, "r") as f:
-                file_contents = f.read()
-            click.echo(path)
-            click.echo("---")
-            click.echo(file_contents)
-            click.echo()
-            click.echo("---")
+                print_path(path, f.read(), xml)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -69,22 +85,11 @@ def process_path(
                     if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
                 ]
 
-            for file in files:
+            for file in sorted(files):
                 file_path = os.path.join(root, file)
                 try:
                     with open(file_path, "r") as f:
-                        file_contents = f.read()
-
-                    if xml:
-                        click.echo(f'<document path="{file_path}">')
-                        click.echo(file_contents)
-                        click.echo("</document>")
-                    else:
-                        click.echo(file_path)
-                        click.echo("---")
-                        click.echo(file_contents)
-                        click.echo()
-                        click.echo("---")
+                        print_path(file_path, f.read(), xml)
                 except UnicodeDecodeError:
                     warning_message = (
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
@@ -153,11 +158,9 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, xml):
         if not ignore_gitignore:
             gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
         if xml and path == paths[0]:
-            click.echo("""
-Here are some documents for you to reference for your task:
-
-<documents>
-""")
+            click.echo("Here are some documents for you to reference for your task:")
+            click.echo()
+            click.echo("<documents>")
 
         process_path(
             path,

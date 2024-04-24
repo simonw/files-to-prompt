@@ -190,7 +190,7 @@ def test_binary_file_warning(tmpdir):
         )
 
 
-def test_xml_format(tmpdir):
+def test_xml_format_dir(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
@@ -201,11 +201,45 @@ def test_xml_format(tmpdir):
 
         result = runner.invoke(cli, ["test_dir", "--xml"])
         assert result.exit_code == 0
-        assert "<documents>" in result.output
-        assert '<document path="test_dir/file1.txt">' in result.output
-        assert "Contents of file1" in result.output
-        assert "</document>" in result.output
-        assert '<document path="test_dir/file2.txt">' in result.output
-        assert "Contents of file2" in result.output
-        assert "</document>" in result.output
-        assert "</documents>" in result.output
+        have = result.output
+        want = """Here are some documents for you to reference for your task:
+
+<documents>
+<document path="test_dir/file1.txt">
+Contents of file1
+</document>
+<document path="test_dir/file2.txt">
+Contents of file2
+</document>
+</documents>
+"""
+        assert want == have
+
+
+def test_xml_format_multiple_paths(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2")
+
+        result = runner.invoke(
+            cli, ["test_dir/file1.txt", "test_dir/file2.txt", "--xml"]
+        )
+
+        assert result.exit_code == 0
+        have = result.output
+        want = """Here are some documents for you to reference for your task:
+
+<documents>
+<document path="test_dir/file1.txt">
+Contents of file1
+</document>
+<document path="test_dir/file2.txt">
+Contents of file2
+</document>
+</documents>
+"""
+        assert want == have
