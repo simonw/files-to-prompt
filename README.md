@@ -43,6 +43,11 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
   ```
 
+- `--split <number>`: Split the output into multiple files, each containing up to the specified number of characters.
+``` files-to-prompt path/to/directory --split 100000
+This will create files named `output_part_1.txt`, `output_part_2.txt`, etc., in your current working directory.
+```
+
 ### Example
 
 Suppose you have a directory structure like this:
