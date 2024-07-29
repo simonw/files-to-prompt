@@ -43,6 +43,11 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
   ```
 
+- `--format <format>`: Specify a special output format ([`clade-xml`](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/long-context-tips#example-multi-document-structure) or `clade-xml-b64`)
+  ```bash
+  files-to-prompt path/to/directory --format clade-xml
+  ```
+
 ### Example
 
 Suppose you have a directory structure like this:

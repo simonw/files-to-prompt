@@ -1,4 +1,6 @@
 import os
+import base64
+import xml.etree.ElementTree as ET
 from click.testing import CliRunner
 from files_to_prompt.cli import cli
 
@@ -186,3 +188,155 @@ def test_binary_file_warning(tmpdir):
             "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
             in stderr
         )
+
+
+def test_claude_xml_output(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2")
+
+        result = runner.invoke(cli, ["test_dir", "--format", "claude-xml"])
+        assert result.exit_code == 0
+
+        # Parse the XML output
+        root = ET.fromstring(result.output)
+
+        # Check the structure of the XML
+        assert root.tag == "documents"
+        documents = root.findall("document")
+
+        # Print out all sources for debugging
+        sources = [doc.find("source").text for doc in documents]
+        print(f"Found sources: {sources}")
+
+        # Check if the expected files are in the output
+        expected_files = ["test_dir/file1.txt", "test_dir/file2.txt"]
+        for expected_file in expected_files:
+            assert any(
+                doc.find("source").text == expected_file for doc in documents
+            ), f"Expected file {expected_file} not found in output"
+
+        for doc in documents:
+            assert "index" in doc.attrib
+            assert doc.find("source") is not None
+            assert doc.find("document_content") is not None
+
+            source = doc.find("source").text
+            content = doc.find("document_content").text
+
+            if source in expected_files:
+                assert content in ["Contents of file1", "Contents of file2"]
+
+
+def test_claude_xml_b64_output(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir/binary_file.bin", "wb") as f:
+            f.write(b"\xff\x00\xff")
+
+        result = runner.invoke(cli, ["test_dir", "--format", "claude-xml-b64"])
+        assert result.exit_code == 0
+
+        # Parse the XML output
+        root = ET.fromstring(result.output)
+
+        # Check the structure of the XML
+        assert root.tag == "documents"
+        documents = root.findall("document")
+
+        # Print out all sources for debugging
+        sources = [doc.find("source").text for doc in documents]
+        print(f"Found sources: {sources}")
+
+        # Check if the expected files are in the output
+        expected_files = ["test_dir/file1.txt", "test_dir/binary_file.bin"]
+        for expected_file in expected_files:
+            assert any(
+                doc.find("source").text == expected_file for doc in documents
+            ), f"Expected file {expected_file} not found in output"
+
+        for doc in documents:
+            assert "index" in doc.attrib
+            assert doc.find("source") is not None
+            assert doc.find("document_content") is not None
+
+            source = doc.find("source").text
+            content = doc.find("document_content").text
+
+            if source == "test_dir/file1.txt":
+                # Text file should not be base64 encoded
+                assert content == "Contents of file1"
+            elif source == "test_dir/binary_file.bin":
+                # Binary file should be base64 encoded
+                decoded = base64.b64decode(content)
+                assert decoded == b"\xff\x00\xff"
+
+
+def test_claude_xml_with_hidden_and_gitignore(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/.gitignore", "w") as f:
+            f.write("ignored.txt")
+        with open("test_dir/ignored.txt", "w") as f:
+            f.write("This file should be ignored")
+        with open("test_dir/.hidden.txt", "w") as f:
+            f.write("This is a hidden file")
+        with open("test_dir/normal.txt", "w") as f:
+            f.write("This is a normal file")
+
+        # Test claude-xml format
+        result = runner.invoke(cli, ["test_dir", "--format", "claude-xml"])
+        assert result.exit_code == 0
+        root = ET.fromstring(result.output)
+        sources = [doc.find("source").text for doc in root.findall("document")]
+        assert "test_dir/normal.txt" in sources
+        assert "test_dir/ignored.txt" not in sources
+        assert "test_dir/.hidden.txt" not in sources
+
+        # Test with --include-hidden
+        result = runner.invoke(
+            cli, ["test_dir", "--format", "claude-xml", "--include-hidden"]
+        )
+        assert result.exit_code == 0
+        root = ET.fromstring(result.output)
+        sources = [doc.find("source").text for doc in root.findall("document")]
+        assert "test_dir/normal.txt" in sources
+        assert "test_dir/ignored.txt" not in sources
+        assert "test_dir/.hidden.txt" in sources
+
+        # Test with --ignore-gitignore
+        result = runner.invoke(
+            cli, ["test_dir", "--format", "claude-xml", "--ignore-gitignore"]
+        )
+        assert result.exit_code == 0
+        root = ET.fromstring(result.output)
+        sources = [doc.find("source").text for doc in root.findall("document")]
+        assert "test_dir/normal.txt" in sources
+        assert "test_dir/ignored.txt" in sources
+        assert "test_dir/.hidden.txt" not in sources
+
+        # Test with both --include-hidden and --ignore-gitignore
+        result = runner.invoke(
+            cli,
+            [
+                "test_dir",
+                "--format",
+                "claude-xml",
+                "--include-hidden",
+                "--ignore-gitignore",
+            ],
+        )
+        assert result.exit_code == 0
+        root = ET.fromstring(result.output)
+        sources = [doc.find("source").text for doc in root.findall("document")]
+        assert "test_dir/normal.txt" in sources
+        assert "test_dir/ignored.txt" in sources
+        assert "test_dir/.hidden.txt" in sources
