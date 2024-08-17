@@ -28,17 +28,7 @@ def process_path(
     filepaths = []
 
     if os.path.isfile(path):
-        try:
-            with open(path, "r") as f:
-                file_contents = f.read()
-            click.echo(path)
-            click.echo("---")
-            click.echo(file_contents)
-            click.echo()
-            click.echo("---")
-        except UnicodeDecodeError:
-            warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
-            click.echo(click.style(warning_message, fg="red"), err=True)
+        filepaths.append(path)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -65,33 +55,29 @@ def process_path(
                     if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
                 ]
 
-            for file in files:
-                if output_format == "claude-xml" or output_format == "claude-xml-b64":
-                    filepaths.extend([os.path.join(root, f) for f in files])
-                    continue
-                else:
-                    file_path = os.path.join(root, file)
-                    try:
-                        with open(file_path, "r") as f:
-                            file_contents = f.read()
+            filepaths.extend([os.path.join(root, f) for f in files])
 
-                        click.echo(file_path)
-                        click.echo("---")
-                        click.echo(file_contents)
-                        click.echo()
-                        click.echo("---")
-                    except UnicodeDecodeError:
-                        warning_message = (
-                            f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
-                        )
-                        click.echo(click.style(warning_message, fg="red"), err=True)
+    if output_format == "claude-xml" or output_format == "claude-xml-b64":
+        xml_root = xml_formatter.create_document_xml(
+            filepaths, base64_encode_binary=(output_format == "claude-xml-b64")
+        )
+        click.echo(xml_formatter.write_document_xml(xml_root))
+    else:
+        for file_path in filepaths:
+            try:
+                with open(file_path, "r") as f:
+                    file_contents = f.read()
+                click.echo(file_path)
+                click.echo("---")
+                click.echo(file_contents)
+                click.echo()
+                click.echo("---")
+            except UnicodeDecodeError:
+                warning_message = (
+                    f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
+                )
+                click.echo(click.style(warning_message, fg="red"), err=True)
 
-        if output_format == "claude-xml":
-            xml_root = xml_formatter.create_document_xml(filepaths, base64_encode_binary=False)
-            click.echo(xml_formatter.write_document_xml(xml_root))
-        elif output_format == "claude-xml-b64":
-            xml_root = xml_formatter.create_document_xml(filepaths, base64_encode_binary=True)
-            click.echo(xml_formatter.write_document_xml(xml_root))
 
 @click.command()
 @click.argument("paths", nargs=-1, type=click.Path(exists=True))

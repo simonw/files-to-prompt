@@ -262,6 +262,11 @@ def test_claude_xml_b64_output(tmpdir):
                 doc.find("source").text == expected_file for doc in documents
             ), f"Expected file {expected_file} not found in output"
 
+        # Check for no duplication
+        assert len(documents) == len(
+            expected_files
+        ), f"Expected {len(expected_files)} documents, but found {len(documents)}"
+
         for doc in documents:
             assert "index" in doc.attrib
             assert doc.find("source") is not None
@@ -277,6 +282,84 @@ def test_claude_xml_b64_output(tmpdir):
                 # Binary file should be base64 encoded
                 decoded = base64.b64decode(content)
                 assert decoded == b"\xff\x00\xff"
+
+
+def test_no_duplication_in_output(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2")
+        with open("test_dir/binary_file.bin", "wb") as f:
+            f.write(b"\xff\x00\xff")
+
+        for format in ["claude-xml", "claude-xml-b64"]:
+            result = runner.invoke(cli, ["test_dir", "--format", format])
+            assert result.exit_code == 0
+
+            # Split the output into warnings and XML content
+            output_lines = result.output.split("\n")
+            warnings = [line for line in output_lines if line.startswith("Warning:")]
+            xml_content = "\n".join(
+                [line for line in output_lines if not line.startswith("Warning:")]
+            )
+
+            print(f"Warnings for {format}:")
+            for warning in warnings:
+                print(warning)
+
+            print(f"\nXML content for {format}:")
+            print(xml_content)
+
+            try:
+                root = ET.fromstring(xml_content)
+            except ET.ParseError as e:
+                print(f"XML parsing error for {format}: {e}")
+                print("Full output:")
+                print(result.output)
+                raise
+
+            documents = root.findall("document")
+            sources = [doc.find("source").text for doc in documents]
+
+            print(f"\nFound sources for {format}: {sources}")
+
+            # Check for no duplication
+            assert len(documents) == len(
+                set(sources)
+            ), f"Duplication found in {format} output: {sources}"
+
+            # Expected count differs based on format
+            if format == "claude-xml":
+                expected_count = (
+                    2  # file1.txt and file2.txt (binary_file.bin is skipped)
+                )
+            else:  # claude-xml-b64
+                expected_count = 3  # file1.txt, file2.txt, and binary_file.bin
+
+            assert (
+                len(documents) == expected_count
+            ), f"Expected {expected_count} documents, but found {len(documents)} in {format} output"
+
+            # Additional checks for claude-xml-b64
+            if format == "claude-xml-b64":
+                binary_doc = next(
+                    (
+                        doc
+                        for doc in documents
+                        if doc.find("source").text == "test_dir/binary_file.bin"
+                    ),
+                    None,
+                )
+                assert (
+                    binary_doc is not None
+                ), "Binary file not found in claude-xml-b64 output"
+                binary_content = binary_doc.find("document_content").text
+                assert (
+                    base64.b64decode(binary_content) == b"\xff\x00\xff"
+                ), "Binary content doesn't match expected value"
 
 
 def test_claude_xml_with_hidden_and_gitignore(tmpdir):
