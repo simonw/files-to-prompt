@@ -3,6 +3,8 @@ from fnmatch import fnmatch
 
 import click
 
+global_index = 1
+
 
 def should_ignore(path, gitignore_rules):
     for rule in gitignore_rules:
@@ -39,9 +41,14 @@ def print_default(path, content):
 
 
 def print_as_xml(path, content):
-    click.echo(f'<document path="{path}">')
+    global global_index
+    click.echo(f'<document index="{global_index}">')
+    click.echo(f"<source>{path}</source>")
+    click.echo("<document_content>")
     click.echo(content)
+    click.echo("</document_content>")
     click.echo("</document>")
+    global_index += 1
 
 
 def process_path(
@@ -151,6 +158,9 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, claude_xml):
     ...
     </documents>
     """
+    # Reset global_index for pytest
+    global global_index
+    global_index = 1
     gitignore_rules = []
     for path in paths:
         if not os.path.exists(path):
@@ -159,7 +169,6 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, claude_xml):
             gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
         if claude_xml and path == paths[0]:
             click.echo("<documents>")
-
         process_path(
             path,
             include_hidden,
@@ -168,6 +177,5 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, claude_xml):
             ignore_patterns,
             claude_xml,
         )
-
     if claude_xml:
         click.echo("</documents>")

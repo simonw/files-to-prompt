@@ -1,4 +1,5 @@
 import os
+import pytest
 
 from click.testing import CliRunner
 
@@ -190,53 +191,33 @@ def test_binary_file_warning(tmpdir):
         )
 
 
-def test_xml_format_dir(tmpdir):
+@pytest.mark.parametrize(
+    "args", (["test_dir"], ["test_dir/file1.txt", "test_dir/file2.txt"])
+)
+def test_xml_format_dir(tmpdir, args):
     runner = CliRunner()
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
         with open("test_dir/file1.txt", "w") as f:
-            f.write("Contents of file1")
+            f.write("Contents of file1.txt")
         with open("test_dir/file2.txt", "w") as f:
-            f.write("Contents of file2")
-
-        result = runner.invoke(cli, ["test_dir", "--cxml"])
+            f.write("Contents of file2.txt")
+        result = runner.invoke(cli, args + ["--cxml"])
         assert result.exit_code == 0
         actual = result.output
         expected = """
 <documents>
-<document path="test_dir/file1.txt">
-Contents of file1
+<document index="1">
+<source>test_dir/file1.txt</source>
+<document_content>
+Contents of file1.txt
+</document_content>
 </document>
-<document path="test_dir/file2.txt">
-Contents of file2
-</document>
-</documents>
-"""
-        assert expected.strip() == actual.strip()
-
-
-def test_cxml_format_multiple_paths(tmpdir):
-    runner = CliRunner()
-    with tmpdir.as_cwd():
-        os.makedirs("test_dir")
-        with open("test_dir/file1.txt", "w") as f:
-            f.write("Contents of file1")
-        with open("test_dir/file2.txt", "w") as f:
-            f.write("Contents of file2")
-
-        result = runner.invoke(
-            cli, ["test_dir/file1.txt", "test_dir/file2.txt", "--cxml"]
-        )
-
-        assert result.exit_code == 0
-        actual = result.output
-        expected = """
-<documents>
-<document path="test_dir/file1.txt">
-Contents of file1
-</document>
-<document path="test_dir/file2.txt">
-Contents of file2
+<document index="2">
+<source>test_dir/file2.txt</source>
+<document_content>
+Contents of file2.txt
+</document_content>
 </document>
 </documents>
 """
