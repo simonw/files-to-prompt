@@ -12,6 +12,7 @@ For background on this project see [Building files-to-prompt entirely using Clau
 ## Installation
 
 Install this tool using `pip`:
+
 ```bash
 pip install files-to-prompt
 ```
@@ -29,11 +30,13 @@ This will output the contents of every file, with each file preceded by its rela
 ### Options
 
 - `--include-hidden`: Include files and folders starting with `.` (hidden files and directories).
+
   ```bash
   files-to-prompt path/to/directory --include-hidden
   ```
 
 - `--ignore-gitignore`: Ignore `.gitignore` files and include all files.
+
   ```bash
   files-to-prompt path/to/directory --ignore-gitignore
   ```
@@ -101,6 +104,25 @@ Contents of file3.txt
 ---
 ```
 
+### XML Output
+
+Anthropic has provided [specific guidelines](https://docs.anthropic.com/claude/docs/long-context-window-tips) for optimally structuring prompts to take advantage of Claude's extended context window.
+
+To structure the output in this way, use the optional `--cxml` flag, which will produce output like this:
+
+```xml
+<documents>
+<document path="my_directory/file1.txt">
+Contents of file1.txt
+</document>
+
+<document path="my_directory/file2.txt">
+Contents of file2.txt
+</document>
+...
+</documents>
+```
+
 ## Development
 
 To contribute to this tool, first checkout the code. Then create a new virtual environment:
@@ -118,6 +140,7 @@ pip install -e '.[test]'
 ```
 
 To run the tests:
+
 ```bash
 pytest
 ```
