@@ -108,11 +108,9 @@ Contents of file3.txt
 
 Anthropic has provided [specific guidelines](https://docs.anthropic.com/claude/docs/long-context-window-tips) for optimally structuring prompts to take advantage of Claude's extended context window.
 
-To structure the output in this way, use the optional `--xml` flag, which will produce output like this:
+To structure the output in this way, use the optional `--cxml` flag, which will produce output like this:
 
 ```xml
-Here are some documents for you to reference for your task:
-
 <documents>
 <document path="my_directory/file1.txt">
 Contents of file1.txt
