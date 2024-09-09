@@ -50,12 +50,12 @@ def process_path(
     ignore_gitignore,
     gitignore_rules,
     ignore_patterns,
-    xml,
+    claude_xml,
 ):
     if os.path.isfile(path):
         try:
             with open(path, "r") as f:
-                print_path(path, f.read(), xml)
+                print_path(path, f.read(), claude_xml)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -89,7 +89,7 @@ def process_path(
                 file_path = os.path.join(root, file)
                 try:
                     with open(file_path, "r") as f:
-                        print_path(file_path, f.read(), xml)
+                        print_path(file_path, f.read(), claude_xml)
                 except UnicodeDecodeError:
                     warning_message = (
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
@@ -117,12 +117,14 @@ def process_path(
     help="List of patterns to ignore",
 )
 @click.option(
-    "--xml",
+    "claude_xml",
+    "-c",
+    "--cxml",
     is_flag=True,
-    help="Output in XML format suitable for Claude's long context window.",
+    help="Output in XML-ish format suitable for Claude's long context window.",
 )
 @click.version_option()
-def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, xml):
+def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, claude_xml):
     """
     Takes one or more paths to files or directories and outputs every file,
     recursively, each one preceded with its filename like this:
@@ -136,9 +138,7 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, xml):
     ---
     ...
 
-    If the `--xml` flag is provided, the output will be structured as follows:
-
-    Here are some documents for you to reference for your task:
+    If the `--cxml` flag is provided, the output will be structured as follows:
 
     <documents>
     <document path="path/to/file1.txt">
@@ -157,9 +157,7 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, xml):
             raise click.BadArgumentUsage(f"Path does not exist: {path}")
         if not ignore_gitignore:
             gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
-        if xml and path == paths[0]:
-            click.echo("Here are some documents for you to reference for your task:")
-            click.echo()
+        if claude_xml and path == paths[0]:
             click.echo("<documents>")
 
         process_path(
@@ -168,8 +166,8 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, xml):
             ignore_gitignore,
             gitignore_rules,
             ignore_patterns,
-            xml,
+            claude_xml,
         )
 
-    if xml:
+    if claude_xml:
         click.echo("</documents>")

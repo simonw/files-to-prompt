@@ -199,11 +199,10 @@ def test_xml_format_dir(tmpdir):
         with open("test_dir/file2.txt", "w") as f:
             f.write("Contents of file2")
 
-        result = runner.invoke(cli, ["test_dir", "--xml"])
+        result = runner.invoke(cli, ["test_dir", "--cxml"])
         assert result.exit_code == 0
-        have = result.output
-        want = """Here are some documents for you to reference for your task:
-
+        actual = result.output
+        expected = """
 <documents>
 <document path="test_dir/file1.txt">
 Contents of file1
@@ -213,10 +212,10 @@ Contents of file2
 </document>
 </documents>
 """
-        assert want == have
+        assert expected.strip() == actual.strip()
 
 
-def test_xml_format_multiple_paths(tmpdir):
+def test_cxml_format_multiple_paths(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
@@ -226,13 +225,12 @@ def test_xml_format_multiple_paths(tmpdir):
             f.write("Contents of file2")
 
         result = runner.invoke(
-            cli, ["test_dir/file1.txt", "test_dir/file2.txt", "--xml"]
+            cli, ["test_dir/file1.txt", "test_dir/file2.txt", "--cxml"]
         )
 
         assert result.exit_code == 0
-        have = result.output
-        want = """Here are some documents for you to reference for your task:
-
+        actual = result.output
+        expected = """
 <documents>
 <document path="test_dir/file1.txt">
 Contents of file1
@@ -242,4 +240,4 @@ Contents of file2
 </document>
 </documents>
 """
-        assert want == have
+        assert expected.strip() == actual.strip()
