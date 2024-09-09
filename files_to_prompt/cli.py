@@ -25,29 +25,29 @@ def read_gitignore(path):
     return []
 
 
-def print_path(path, content, xml):
+def print_path(writer, path, content, xml):
     if xml:
-        print_as_xml(path, content)
+        print_as_xml(writer, path, content)
     else:
-        print_default(path, content)
+        print_default(writer, path, content)
 
 
-def print_default(path, content):
-    click.echo(path)
-    click.echo("---")
-    click.echo(content)
-    click.echo()
-    click.echo("---")
+def print_default(writer, path, content):
+    writer(path)
+    writer("---")
+    writer(content)
+    writer("")
+    writer("---")
 
 
-def print_as_xml(path, content):
+def print_as_xml(writer, path, content):
     global global_index
-    click.echo(f'<document index="{global_index}">')
-    click.echo(f"<source>{path}</source>")
-    click.echo("<document_content>")
-    click.echo(content)
-    click.echo("</document_content>")
-    click.echo("</document>")
+    writer(f'<document index="{global_index}">')
+    writer(f"<source>{path}</source>")
+    writer("<document_content>")
+    writer(content)
+    writer("</document_content>")
+    writer("</document>")
     global_index += 1
 
 
@@ -57,12 +57,13 @@ def process_path(
     ignore_gitignore,
     gitignore_rules,
     ignore_patterns,
+    writer,
     claude_xml,
 ):
     if os.path.isfile(path):
         try:
             with open(path, "r") as f:
-                print_path(path, f.read(), claude_xml)
+                print_path(writer, path, f.read(), claude_xml)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -96,7 +97,7 @@ def process_path(
                 file_path = os.path.join(root, file)
                 try:
                     with open(file_path, "r") as f:
-                        print_path(file_path, f.read(), claude_xml)
+                        print_path(writer, file_path, f.read(), claude_xml)
                 except UnicodeDecodeError:
                     warning_message = (
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
@@ -124,6 +125,13 @@ def process_path(
     help="List of patterns to ignore",
 )
 @click.option(
+    "output_file",
+    "-o",
+    "--output",
+    type=click.Path(writable=True),
+    help="Output to a file instead of stdout",
+)
+@click.option(
     "claude_xml",
     "-c",
     "--cxml",
@@ -131,7 +139,9 @@ def process_path(
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
 @click.version_option()
-def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, claude_xml):
+def cli(
+    paths, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml
+):
     """
     Takes one or more paths to files or directories and outputs every file,
     recursively, each one preceded with its filename like this:
@@ -162,20 +172,28 @@ def cli(paths, include_hidden, ignore_gitignore, ignore_patterns, claude_xml):
     global global_index
     global_index = 1
     gitignore_rules = []
+    writer = click.echo
+    fp = None
+    if output_file:
+        fp = open(output_file, "w")
+        writer = lambda s: print(s, file=fp)
     for path in paths:
         if not os.path.exists(path):
             raise click.BadArgumentUsage(f"Path does not exist: {path}")
         if not ignore_gitignore:
             gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
         if claude_xml and path == paths[0]:
-            click.echo("<documents>")
+            writer("<documents>")
         process_path(
             path,
             include_hidden,
             ignore_gitignore,
             gitignore_rules,
             ignore_patterns,
+            writer,
             claude_xml,
         )
     if claude_xml:
-        click.echo("</documents>")
+        writer("</documents>")
+    if fp:
+        fp.close()

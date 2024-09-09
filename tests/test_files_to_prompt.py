@@ -222,3 +222,35 @@ Contents of file2.txt
 </documents>
 """
         assert expected.strip() == actual.strip()
+
+
+@pytest.mark.parametrize("arg", ("-o", "--output"))
+def test_output_option(tmpdir, arg):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1.txt")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2.txt")
+        output_file = "output.txt"
+        result = runner.invoke(
+            cli, ["test_dir", arg, output_file], catch_exceptions=False
+        )
+        assert result.exit_code == 0
+        assert not result.output
+        with open(output_file, "r") as f:
+            actual = f.read()
+        expected = """
+test_dir/file1.txt
+---
+Contents of file1.txt
+
+---
+test_dir/file2.txt
+---
+Contents of file2.txt
+
+---
+"""
+        assert expected.strip() == actual.strip()

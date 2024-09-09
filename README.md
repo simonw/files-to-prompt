@@ -46,6 +46,18 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
   ```
 
+- `c/--cxml`: Output in Claude XML format.
+
+  ```bash
+  files-to-prompt path/to/directory --cxml
+  ```
+
+- `-o/--output <file>`: Write the output to a file instead of printing it to the console.
+
+  ```bash
+  files-to-prompt path/to/directory -o output.txt
+  ```
+
 ### Example
 
 Suppose you have a directory structure like this:
