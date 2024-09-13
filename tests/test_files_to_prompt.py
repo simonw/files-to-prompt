@@ -287,7 +287,15 @@ def test_github_repo_fetch_with_token(tmpdir):
     assert result.exit_code == 0
     assert "file1.txt" in result.output
     assert "File content" in result.output
-    mock_get.assert_called_with(
+    
+    # Check that the initial API call was made correctly
+    mock_get.assert_any_call(
         "https://api.github.com/repos/simonw/llm/contents/",
+        headers={"Authorization": "token test_token"}
+    )
+    
+    # Check that the file content was fetched
+    mock_get.assert_any_call(
+        "http://example.com/file1.txt",
         headers={"Authorization": "token test_token"}
     )
