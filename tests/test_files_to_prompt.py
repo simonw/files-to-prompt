@@ -2,6 +2,7 @@ import os
 import pytest
 
 from click.testing import CliRunner
+from unittest.mock import patch, Mock
 
 from files_to_prompt.cli import cli
 
@@ -254,3 +255,39 @@ Contents of file2.txt
 ---
 """
         assert expected.strip() == actual.strip()
+
+def test_github_repo_fetch(tmpdir):
+    runner = CliRunner()
+    mock_response = Mock()
+    mock_response.json.return_value = [
+        {"type": "file", "path": "file1.txt", "download_url": "http://example.com/file1.txt"},
+        {"type": "file", "path": "file2.txt", "download_url": "http://example.com/file2.txt"},
+    ]
+    mock_response.text = "File content"
+    
+    with patch('requests.get', return_value=mock_response):
+        result = runner.invoke(cli, ["--github-repo", "https://github.com/simonw/llm.git", "--github-path", "path/in/repo"])
+    
+    assert result.exit_code == 0
+    assert "file1.txt" in result.output
+    assert "file2.txt" in result.output
+    assert "File content" in result.output
+
+def test_github_repo_fetch_with_token(tmpdir):
+    runner = CliRunner()
+    mock_response = Mock()
+    mock_response.json.return_value = [
+        {"type": "file", "path": "file1.txt", "download_url": "http://example.com/file1.txt"},
+    ]
+    mock_response.text = "File content"
+    
+    with patch('requests.get', return_value=mock_response) as mock_get:
+        result = runner.invoke(cli, ["--github-repo", "https://github.com/simonw/llm.git", "--github-token", "test_token"])
+    
+    assert result.exit_code == 0
+    assert "file1.txt" in result.output
+    assert "File content" in result.output
+    mock_get.assert_called_with(
+        "https://api.github.com/repos/simonw/llm/contents/",
+        headers={"Authorization": "token test_token"}
+    )
