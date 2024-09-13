@@ -116,6 +116,19 @@ Contents of file3.txt
 ---
 ```
 
+### GitHub Repository Support
+
+You can now use `files-to-prompt` to process files directly from a GitHub repository:
+
+```bash
+files-to-prompt --github-repo https://github.com/username/repo.git --github-path path/in/repo
+```
+
+Pass a github token using the `--github-token` option:
+```bash
+files-to-prompt --github-repo https://github.com/username/repo.git --github-path path/in/repo --github-token your_github_token
+``` 
+
 ### Claude XML Output
 
 Anthropic has provided [specific guidelines](https://docs.anthropic.com/claude/docs/long-context-window-tips) for optimally structuring prompts to take advantage of Claude's extended context window.
