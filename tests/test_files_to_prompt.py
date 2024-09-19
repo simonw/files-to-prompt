@@ -4,6 +4,7 @@ import pytest
 from click.testing import CliRunner
 
 from files_to_prompt.cli import cli
+from datetime import datetime
 
 
 def test_basic_functionality(tmpdir):
@@ -189,6 +190,31 @@ def test_binary_file_warning(tmpdir):
             "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
             in stderr
         )
+
+
+def test_mtime(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/old_file.txt", "w") as f:
+            f.write("This is an old file")
+        with open("test_dir/new_file.txt", "w") as f:
+            f.write("This is a new file")
+
+        # Set the modification time of the old file to 30 days ago
+        old_file_path = "test_dir/old_file.txt"
+        old_mtime = datetime.datetime.now() - datetime.timedelta(days=30)
+        os.utime(old_file_path, (old_mtime.timestamp(), old_mtime.timestamp()))
+
+        result = runner.invoke(cli, ["test_dir", "--mtime", "1d"])
+        assert result.exit_code == 0
+        assert "test_dir/old_file.txt" not in result.output
+        assert "test_dir/new_file.txt" in result.output
+
+        result = runner.invoke(cli, ["test_dir", "--mtime", "30d"])
+        assert result.exit_code == 0
+        assert "test_dir/old_file.txt" in result.output
+        assert "test_dir/new_file.txt" in result.output
 
 
 @pytest.mark.parametrize(
