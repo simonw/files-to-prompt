@@ -5,7 +5,7 @@ import click
 from datetime import datetime, timedelta
 
 global_index = 1
-current_time = datetime.now()  # Track current time for date comparison filters
+current_time = datetime.now()  # to be able to track current time for date comparison filters
 
 
 def should_ignore(path, gitignore_rules):
@@ -25,6 +25,36 @@ def read_gitignore(path):
                 line.strip() for line in f if line.strip() and not line.startswith("#")
             ]
     return []
+
+
+def parse_time_delta(delta_str):
+    """
+    Parse a string in the format "30s", "30m", "30h", "30d", etc. into a timedelta object.
+
+    Args:
+        delta_str (str): The string to parse.
+
+    Returns:
+        timedelta: The parsed timedelta object.
+
+    Raises:
+        ValueError: If the input string is invalid.
+    """
+    import re
+
+    match = re.match(r"(\d+)([smhd])", delta_str)
+    if match:
+        value = int(match.group(1))
+        unit = match.group(2)
+        if unit == "s":
+            return timedelta(seconds=value)
+        elif unit == "m":
+            return timedelta(minutes=value)
+        elif unit == "h":
+            return timedelta(hours=value)
+        elif unit == "d":
+            return timedelta(days=value)
+    raise ValueError("Invalid time delta string")
 
 
 def parse_time_delta(delta_str):
@@ -88,15 +118,14 @@ def print_default(writer, path, content):
 
 
 def print_as_xml(writer, path, content):
-    global global_index
+    global global_index  # Move global declaration before any assignment
     writer(f'<document index="{global_index}">')
     writer(f"<source>{path}</source>")
     writer("<document_content>")
     writer(content)
     writer("</document_content>")
     writer("</document>")
-    global_index += 1
-
+    global_index += 1  # This is now valid after the global declaration
 
 def process_path(
     path,
@@ -104,13 +133,16 @@ def process_path(
     ignore_gitignore,
     gitignore_rules,
     ignore_patterns,
+    include_patterns,  # Added this
     mtime_delta,
     writer,
     claude_xml,
 ):
     if os.path.isfile(path):
+        if include_patterns and not any(fnmatch(os.path.basename(path), pattern) for pattern in include_patterns):
+            return  # Skip file if it does not match include patterns
         if mtime_delta is not None and not filter_by_mtime(path, mtime_delta):
-            return  # skip file if it's older than specified delta
+            return  # Skip file if it's older than specified delta
         try:
             with open(path, "r") as f:
                 print_path(writer, path, f.read(), claude_xml)
@@ -141,6 +173,14 @@ def process_path(
                     f
                     for f in files
                     if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
+                ]
+            
+            # Include pattern filter
+            if include_patterns:
+                files = [
+                    f
+                    for f in files
+                    if any(fnmatch(f, pattern) for pattern in include_patterns)
                 ]
 
             if mtime_delta is not None:
@@ -182,6 +222,13 @@ def process_path(
     help="List of patterns to ignore",
 )
 @click.option(
+    "include_patterns",
+    "--include",
+    multiple=True,
+    default=[],
+    help="List of patterns to include"
+)
+@click.option(
     "--mtime",
     type=str,
     default=None,
@@ -207,39 +254,18 @@ def cli(
     include_hidden,
     ignore_gitignore,
     ignore_patterns,
+    include_patterns,
     mtime,
     output_file,
     claude_xml,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
-    recursively, each one preceded with its filename like this:
-
-    path/to/file.py
-    ----
-    Contents of file.py goes here
-
-    ---
-    path/to/file2.py
-    ---
-    ...
-
-    If the `--cxml` flag is provided, the output will be structured as follows:
-
-    <documents>
-    <document path="path/to/file1.txt">
-    Contents of file1.txt
-    </document>
-
-    <document path="path/to/file2.txt">
-    Contents of file2.txt
-    </document>
-    ...
-    </documents>
+    recursively, each one preceded with its filename.
     """
-    # Reset global_index for pytest
-    global global_index
-    global_index = 1
+    global global_index  # Declare the global variable before assigning or using it
+    global_index = 1  # Reset the global index to 1 for each run
+
     gitignore_rules = []
     writer = click.echo
     fp = None
@@ -268,6 +294,7 @@ def cli(
             ignore_gitignore,
             gitignore_rules,
             ignore_patterns,
+            include_patterns,
             mtime_delta,
             writer,
             claude_xml,
