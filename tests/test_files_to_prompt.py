@@ -190,7 +190,46 @@ def test_binary_file_warning(tmpdir):
             in stderr
         )
 
+        
+def test_ignore_files_with_no_extension(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file_with_extension.txt", "w") as f:
+            f.write("This file has an extension")
+        with open("test_dir/file_without_extension", "w") as f:
+            f.write("This file has no extension")
+        with open("test_dir/.hidden_file_without_extension", "w") as f:
+            f.write("This is a hidden file without extension")
 
+        # Test without the option
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert "test_dir/file_with_extension.txt" in result.output
+        assert "This file has an extension" in result.output
+        assert "test_dir/file_without_extension" in result.output
+        assert "This file has no extension" in result.output
+        assert "test_dir/.hidden_file_without_extension" not in result.output
+
+        # Test with the option
+        result = runner.invoke(cli, ["test_dir", "--ignore-files-with-no-extension"])
+        assert result.exit_code == 0
+        assert "test_dir/file_with_extension.txt" in result.output
+        assert "This file has an extension" in result.output
+        assert "test_dir/file_without_extension" not in result.output
+        assert "This file has no extension" not in result.output
+        assert "test_dir/.hidden_file_without_extension" not in result.output
+
+        # Test with both --ignore-files-with-no-extension and --include-hidden
+        result = runner.invoke(cli, ["test_dir", "--ignore-files-with-no-extension", "--include-hidden"])
+        assert result.exit_code == 0
+        assert "test_dir/file_with_extension.txt" in result.output
+        assert "This file has an extension" in result.output
+        assert "test_dir/file_without_extension" not in result.output
+        assert "This file has no extension" not in result.output
+        assert "test_dir/.hidden_file_without_extension" not in result.output
+
+        
 @pytest.mark.parametrize(
     "args", (["test_dir"], ["test_dir/file1.txt", "test_dir/file2.txt"])
 )
@@ -222,6 +261,45 @@ Contents of file2.txt
 </documents>
 """
         assert expected.strip() == actual.strip()
+
+
+def test_ignore_files_with_no_extension(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file_with_extension.txt", "w") as f:
+            f.write("This file has an extension")
+        with open("test_dir/file_without_extension", "w") as f:
+            f.write("This file has no extension")
+        with open("test_dir/.hidden_file_without_extension", "w") as f:
+            f.write("This is a hidden file without extension")
+
+        # Test without the option
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert "test_dir/file_with_extension.txt" in result.output
+        assert "This file has an extension" in result.output
+        assert "test_dir/file_without_extension" in result.output
+        assert "This file has no extension" in result.output
+        assert "test_dir/.hidden_file_without_extension" not in result.output
+
+        # Test with the option
+        result = runner.invoke(cli, ["test_dir", "--ignore-files-with-no-extension"])
+        assert result.exit_code == 0
+        assert "test_dir/file_with_extension.txt" in result.output
+        assert "This file has an extension" in result.output
+        assert "test_dir/file_without_extension" not in result.output
+        assert "This file has no extension" not in result.output
+        assert "test_dir/.hidden_file_without_extension" not in result.output
+
+        # Test with both --ignore-files-with-no-extension and --include-hidden
+        result = runner.invoke(cli, ["test_dir", "--ignore-files-with-no-extension", "--include-hidden"])
+        assert result.exit_code == 0
+        assert "test_dir/file_with_extension.txt" in result.output
+        assert "This file has an extension" in result.output
+        assert "test_dir/file_without_extension" not in result.output
+        assert "This file has no extension" not in result.output
+        assert "test_dir/.hidden_file_without_extension" not in result.output
 
 
 @pytest.mark.parametrize("arg", ("-o", "--output"))
