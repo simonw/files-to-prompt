@@ -57,6 +57,7 @@ def process_path(
     ignore_gitignore,
     gitignore_rules,
     ignore_patterns,
+    ignore_files_with_no_extension,
     writer,
     claude_xml,
 ):
@@ -92,6 +93,9 @@ def process_path(
                     for f in files
                     if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
                 ]
+
+            if ignore_files_with_no_extension:
+                files = [f for f in files if os.path.splitext(f)[1]]
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
@@ -138,9 +142,15 @@ def process_path(
     is_flag=True,
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
+@click.option(
+    "--ignore-files-with-no-extension",
+    is_flag=True,
+    help="Ignore files that don't have an extension",
+)
 @click.version_option()
 def cli(
-    paths, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml
+    paths, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml,
+    ignore_files_with_no_extension
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -190,6 +200,7 @@ def cli(
             ignore_gitignore,
             gitignore_rules,
             ignore_patterns,
+            ignore_files_with_no_extension,
             writer,
             claude_xml,
         )
