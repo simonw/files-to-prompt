@@ -14,6 +14,9 @@ def test_basic_functionality(tmpdir):
             f.write("Contents of file1")
         with open("test_dir/file2.txt", "w") as f:
             f.write("Contents of file2")
+        os.makedirs("test_dir/test_sub_dir")
+        with open("test_dir/test_sub_dir/file3.txt", "w") as f:
+            f.write("Contents of file3")
 
         result = runner.invoke(cli, ["test_dir"])
         assert result.exit_code == 0
@@ -21,6 +24,8 @@ def test_basic_functionality(tmpdir):
         assert "Contents of file1" in result.output
         assert "test_dir/file2.txt" in result.output
         assert "Contents of file2" in result.output
+        assert "test_dir/test_sub_dir/file3.txt" in result.output
+        assert "Contents of file3" in result.output
 
 
 def test_include_hidden(tmpdir):
@@ -254,3 +259,66 @@ Contents of file2.txt
 ---
 """
         assert expected.strip() == actual.strip()
+
+
+
+def test_find_option(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir1")
+        os.makedirs("test_dir2")
+        os.makedirs(os.path.join("test_dir1", "test_sub_dir"))
+        with open("test_dir1/file1.txt", "w") as f:
+            f.write("Contents of file1.txt in test_dir1")
+        with open("test_dir1/file2.py", "w") as f:
+            f.write("Contents of file2.py")
+        with open("test_dir2/file1.txt", "w") as f:
+            f.write("Contents of file1.txt in test_dir2")
+        with open("test_dir2/file3.md", "w") as f:
+            f.write("Contents of file3.md")
+        with open(os.path.join("test_dir1", "test_sub_dir", "file3.txt"), "w") as f:
+            f.write("Contents of file3.txt in nested directory")
+
+        # Test single file search
+        result = runner.invoke(cli, [".", "-f", "file1.txt"])
+        assert result.exit_code == 0
+        assert "test_dir1/file1.txt" in result.output
+        assert "test_dir2/file1.txt" in result.output
+        assert "file2.py" not in result.output
+        assert "file3.md" not in result.output
+        assert "file3.txt" not in result.output
+
+        # Test multiple file search
+        result = runner.invoke(cli, [".", "-f", "file1.txt", "-f", "file3.txt"])
+        assert result.exit_code == 0
+        assert "test_dir1/file1.txt" in result.output
+        assert "test_dir2/file1.txt" in result.output
+        assert "test_dir1/test_sub_dir/file3.txt" in result.output
+        assert "file2.py" not in result.output
+        assert "file3.md" not in result.output
+
+        # Test with no matches
+        result = runner.invoke(cli, [".", "-f", "nonexistent.txt"])
+        assert result.exit_code == 0
+        assert result.output.strip() == ""
+
+        # Test with --find and other options
+        result = runner.invoke(cli, [".", "-f", "file3.txt", "--cxml"])
+        assert result.exit_code == 0
+        assert "<documents>" in result.output
+        assert "<source>test_dir1/test_sub_dir/file3.txt</source>" in result.output
+        assert "file1.txt" not in result.output
+        assert "file2.py" not in result.output
+        assert "file3.md" not in result.output
+
+        # Test finding files at different depths
+        result = runner.invoke(cli, [".", "-f", "file1.txt", "-f", "file3.txt"])
+        assert result.exit_code == 0
+        assert "test_dir1/file1.txt" in result.output
+        assert "test_dir2/file1.txt" in result.output
+        assert "test_dir1/test_sub_dir/file3.txt" in result.output
+        assert "Contents of file1.txt in test_dir1" in result.output
+        assert "Contents of file1.txt in test_dir2" in result.output
+        assert "Contents of file3.txt in nested directory" in result.output
+
+

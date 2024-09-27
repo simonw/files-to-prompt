@@ -59,14 +59,19 @@ def process_path(
     ignore_patterns,
     writer,
     claude_xml,
+    find_filenames,
 ):
+    def should_include_file(filename):
+        return not find_filenames or filename in find_filenames
+
     if os.path.isfile(path):
-        try:
-            with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml)
-        except UnicodeDecodeError:
-            warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
-            click.echo(click.style(warning_message, fg="red"), err=True)
+        if should_include_file(os.path.basename(path)):
+            try:
+                with open(path, "r") as f:
+                    print_path(writer, path, f.read(), claude_xml)
+            except UnicodeDecodeError:
+                warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
+                click.echo(click.style(warning_message, fg="red"), err=True)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -92,7 +97,8 @@ def process_path(
                     for f in files
                     if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
                 ]
-
+            
+            files = [f for f in files if should_include_file(os.path.basename(f))]
             for file in sorted(files):
                 file_path = os.path.join(root, file)
                 try:
@@ -103,6 +109,8 @@ def process_path(
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
                     )
                     click.echo(click.style(warning_message, fg="red"), err=True)
+            for directory in sorted(dirs):
+                process_path(directory, include_hidden, ignore_gitignore, gitignore_rules, ignore_patterns, writer, claude_xml, find_filenames)
 
 
 @click.command()
@@ -138,9 +146,16 @@ def process_path(
     is_flag=True,
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
+@click.option(
+    "find_filenames",
+    "-f",
+    "--find",
+    multiple=True,
+    help="Find files with the specified names",
+)
 @click.version_option()
 def cli(
-    paths, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml
+    paths, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml, find_filenames
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -167,6 +182,9 @@ def cli(
     </document>
     ...
     </documents>
+
+    If the `-f` or `--find` option is used, only files with the specified names will be included in the output.
+    Multiple filenames can be specified by using the option multiple times, e.g., -f file1.txt -f file2.py
     """
     # Reset global_index for pytest
     global global_index
@@ -192,6 +210,7 @@ def cli(
             ignore_patterns,
             writer,
             claude_xml,
+            find_filenames,
         )
     if claude_xml:
         writer("</documents>")
