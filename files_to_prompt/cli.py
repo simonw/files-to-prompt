@@ -87,6 +87,11 @@ def process_path(
                 ]
 
             if ignore_patterns:
+                dirs[:] = [
+                    d
+                    for d in dirs
+                    if not any(fnmatch(d, pattern) for pattern in ignore_patterns)
+                ]
                 files = [
                     f
                     for f in files
