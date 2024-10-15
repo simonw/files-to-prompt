@@ -88,7 +88,7 @@ def test_multiple_paths(tmpdir):
 def test_ignore_patterns(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
-        os.makedirs("test_dir")
+        os.makedirs("test_dir", exist_ok=True)
         with open("test_dir/file_to_ignore.txt", "w") as f:
             f.write("This file should be ignored due to ignore patterns")
         with open("test_dir/file_to_include.txt", "w") as f:
@@ -100,12 +100,18 @@ def test_ignore_patterns(tmpdir):
         assert "This file should be ignored due to ignore patterns" not in result.output
         assert "test_dir/file_to_include.txt" not in result.output
 
-        result = runner.invoke(cli, ["test_dir", "--ignore", "file_to_ignore.*"])
+        os.makedirs("test_dir/test_subdir", exist_ok=True)
+        with open("test_dir/test_subdir/any_file.txt", "w") as f:
+            f.write("This entire subdirectory should be ignored due to ignore patterns")
+        result = runner.invoke(cli, ["test_dir", "--ignore", "*subdir*"])
         assert result.exit_code == 0
-        assert "test_dir/file_to_ignore.txt" not in result.output
-        assert "This file should be ignored due to ignore patterns" not in result.output
+        assert "test_dir/test_subdir/any_file.txt" not in result.output
+        assert "This entire subdirectory should be ignored due to ignore patterns" not in result.output
         assert "test_dir/file_to_include.txt" in result.output
         assert "This file should be included" in result.output
+        assert "This file should be included" in result.output
+        
+        result = runner.invoke(cli, ["test_dir", "--ignore", ""])
 
 
 def test_mixed_paths_with_options(tmpdir):
