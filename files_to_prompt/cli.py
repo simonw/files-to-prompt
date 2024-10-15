@@ -54,6 +54,7 @@ def print_as_xml(writer, path, content):
 def process_path(
     path,
     include_hidden,
+    include_directories,
     ignore_gitignore,
     gitignore_rules,
     ignore_patterns,
@@ -87,11 +88,12 @@ def process_path(
                 ]
 
             if ignore_patterns:
-                dirs[:] = [
-                    d
-                    for d in dirs
-                    if not any(fnmatch(d, pattern) for pattern in ignore_patterns)
-                ]
+                if not include_directories:
+                    dirs[:] = [
+                        d
+                        for d in dirs
+                        if not any(fnmatch(d, pattern) for pattern in ignore_patterns)
+                    ]
                 files = [
                     f
                     for f in files
@@ -116,6 +118,11 @@ def process_path(
     "--include-hidden",
     is_flag=True,
     help="Include files and folders starting with .",
+)
+@click.option(
+    "--include-directories",
+    is_flag=True,
+    help="Include directories whose names match the patterns",
 )
 @click.option(
     "--ignore-gitignore",
@@ -145,7 +152,7 @@ def process_path(
 )
 @click.version_option()
 def cli(
-    paths, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml
+    paths, include_hidden, include_directories, ignore_gitignore, ignore_patterns, output_file, claude_xml
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -192,6 +199,7 @@ def cli(
         process_path(
             path,
             include_hidden,
+            include_directories,
             ignore_gitignore,
             gitignore_rules,
             ignore_patterns,
