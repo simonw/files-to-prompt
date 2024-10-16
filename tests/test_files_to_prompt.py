@@ -108,6 +108,31 @@ def test_ignore_patterns(tmpdir):
         assert "This file should be included" in result.output
 
 
+def test_specific_extensions(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        # Write one.txt one.py two/two.txt two/two.py three.md
+        os.makedirs("test_dir/two")
+        with open("test_dir/one.txt", "w") as f:
+            f.write("This is one.txt")
+        with open("test_dir/one.py", "w") as f:
+            f.write("This is one.py")
+        with open("test_dir/two/two.txt", "w") as f:
+            f.write("This is two/two.txt")
+        with open("test_dir/two/two.py", "w") as f:
+            f.write("This is two/two.py")
+        with open("test_dir/three.md", "w") as f:
+            f.write("This is three.md")
+
+        # Try with -e py -e md
+        result = runner.invoke(cli, ["test_dir", "-e", "py", "-e", "md"])
+        assert result.exit_code == 0
+        assert ".txt" not in result.output
+        assert "test_dir/one.py" in result.output
+        assert "test_dir/two/two.py" in result.output
+        assert "test_dir/three.md" in result.output
+
+
 def test_mixed_paths_with_options(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():

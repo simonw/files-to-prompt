@@ -53,6 +53,7 @@ def print_as_xml(writer, path, content):
 
 def process_path(
     path,
+    extensions,
     include_hidden,
     ignore_gitignore,
     gitignore_rules,
@@ -93,6 +94,9 @@ def process_path(
                     if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
                 ]
 
+            if extensions:
+                files = [f for f in files if f.endswith(extensions)]
+
             for file in sorted(files):
                 file_path = os.path.join(root, file)
                 try:
@@ -107,6 +111,7 @@ def process_path(
 
 @click.command()
 @click.argument("paths", nargs=-1, type=click.Path(exists=True))
+@click.option("extensions", "-e", "--extension", multiple=True)
 @click.option(
     "--include-hidden",
     is_flag=True,
@@ -140,7 +145,13 @@ def process_path(
 )
 @click.version_option()
 def cli(
-    paths, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml
+    paths,
+    extensions,
+    include_hidden,
+    ignore_gitignore,
+    ignore_patterns,
+    output_file,
+    claude_xml,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -186,6 +197,7 @@ def cli(
             writer("<documents>")
         process_path(
             path,
+            extensions,
             include_hidden,
             ignore_gitignore,
             gitignore_rules,
