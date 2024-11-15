@@ -157,10 +157,12 @@ def cli(
     Takes one or more paths to files or directories and outputs every file,
     recursively, each one preceded with its filename like this:
 
+    \b
     path/to/file.py
     ----
     Contents of file.py goes here
 
+    \b
     ---
     path/to/file2.py
     ---
