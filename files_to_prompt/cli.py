@@ -157,10 +157,12 @@ def cli(
     Takes one or more paths to files or directories and outputs every file,
     recursively, each one preceded with its filename like this:
 
+    \b
     path/to/file.py
     ----
     Contents of file.py goes here
 
+    \b
     ---
     path/to/file2.py
     ---
@@ -168,15 +170,20 @@ def cli(
 
     If the `--cxml` flag is provided, the output will be structured as follows:
 
+    \b
     <documents>
-    <document path="path/to/file1.txt">
+    <document index="1">
+    <source>my_directory/file1.txt</source>
+    <document_content>
     Contents of file1.txt
+    </document_content>
     </document>
-
-    <document path="path/to/file2.txt">
+    <document index="2">
+    <source>my_directory/file2.txt</source>
+    <document_content>
     Contents of file2.txt
+    </document_content>
     </document>
-    ...
     </documents>
     """
     # Reset global_index for pytest
