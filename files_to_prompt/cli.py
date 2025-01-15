@@ -2,7 +2,7 @@ import os
 from fnmatch import fnmatch
 
 import click
-
+import json
 global_index = 1
 
 
@@ -50,6 +50,19 @@ def print_as_xml(writer, path, content):
     writer("</document>")
     global_index += 1
 
+def process_ipynb(content):
+    nb = json.loads(content)
+    processed_content = []
+    
+    for cell in nb['cells']:
+        if cell['cell_type'] == 'markdown':
+            processed_content.append('# %% [markdown]\n' + '\n# '.join(cell['source']))
+        elif cell['cell_type'] == 'code':
+            processed_content.append('# %% [python]\n' + '\n'.join(cell['source']))
+        processed_content.append('\n')
+        
+    return '\n'.join(processed_content)
+
 
 def process_path(
     path,
@@ -64,7 +77,15 @@ def process_path(
     if os.path.isfile(path):
         try:
             with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml)
+                content = f.read()
+                if path.endswith('.ipynb'):
+                    try:
+                        content = process_ipynb(content)
+                    except json.JSONDecodeError:
+                        warning_message = f"Warning: Skipping file {path} - invalid notebook format"
+                        click.echo(click.style(warning_message, fg="red"), err=True)
+                        return
+                print_path(writer, path, content, claude_xml)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -101,7 +122,15 @@ def process_path(
                 file_path = os.path.join(root, file)
                 try:
                     with open(file_path, "r") as f:
-                        print_path(writer, file_path, f.read(), claude_xml)
+                        content = f.read()
+                        if file_path.endswith('.ipynb'):
+                            try:
+                                content = process_ipynb(content)
+                            except json.JSONDecodeError:
+                                warning_message = f"Warning: Skipping file {path} - invalid notebook format"
+                                click.echo(click.style(warning_message, fg="red"), err=True)
+                                return
+                        print_path(writer, file_path, content, claude_xml)
                 except UnicodeDecodeError:
                     warning_message = (
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
