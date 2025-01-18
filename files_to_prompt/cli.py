@@ -55,6 +55,7 @@ def print_as_xml(writer, path, content):
 
 def process_path(
     path,
+    extensions,
     include_hidden,
     ignore_gitignore,
     gitignore_rules,
@@ -94,6 +95,9 @@ def process_path(
                     for f in files
                     if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
                 ]
+
+            if extensions:
+                files = [f for f in files if f.endswith(extensions)]
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
@@ -157,6 +161,7 @@ def fetch_github_files(repo_url, path="", token=None):
 @click.option("--github-repo", help="GitHub repository URL (e.g., https://github.com/username/repo.git)")
 @click.option("--github-path", default="", help="Path within the GitHub repository (default: entire repo)")
 @click.option("--github-token", envvar="GITHUB_TOKEN", help="GitHub personal access token")
+@click.option("extensions", "-e", "--extension", multiple=True)
 @click.option(
     "--include-hidden",
     is_flag=True,
@@ -190,7 +195,16 @@ def fetch_github_files(repo_url, path="", token=None):
 )
 @click.version_option()
 def cli(
-    paths, github_repo, github_path, github_token, include_hidden, ignore_gitignore, ignore_patterns, output_file, claude_xml
+    paths,
+    github_repo,
+    github_path,
+    github_token,
+    extensions,
+    include_hidden,
+    ignore_gitignore,
+    ignore_patterns,
+    output_file,
+    claude_xml,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -227,7 +241,7 @@ def cli(
     if output_file:
         fp = open(output_file, "w")
         writer = lambda s: print(s, file=fp)
-    
+
     if claude_xml:
         writer("<documents>")
 
@@ -237,6 +251,8 @@ def cli(
             if not github_files:
                 raise click.ClickException(f"No files found in the specified GitHub repository: {github_repo}")
             for file_path, content in github_files:
+                if extensions and not any(file_path.endswith(ext) for ext in extensions):
+                    continue
                 if claude_xml:
                     print_as_xml(writer, file_path, content)
                 else:
@@ -252,6 +268,7 @@ def cli(
                 gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
             process_path(
                 path,
+                extensions,
                 include_hidden,
                 ignore_gitignore,
                 gitignore_rules,

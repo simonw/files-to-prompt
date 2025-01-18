@@ -29,6 +29,12 @@ This will output the contents of every file, with each file preceded by its rela
 
 ### Options
 
+- `-e/--extension <extension>`: Only include files with the specified extension. Can be used multiple times.
+
+  ```bash
+  files-to-prompt path/to/directory -e txt -e md
+  ```
+
 - `--include-hidden`: Include files and folders starting with `.` (hidden files and directories).
 
   ```bash
