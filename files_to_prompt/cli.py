@@ -25,26 +25,39 @@ def read_gitignore(path):
     return []
 
 
-def print_path(writer, path, content, xml):
+def add_line_numbers(content):
+    lines = content.splitlines()
+
+    padding = len(str(len(lines)))
+
+    numbered_lines = [f"{i+1:{padding}}  {line}" for i, line in enumerate(lines)]
+    return "\n".join(numbered_lines)
+
+
+def print_path(writer, path, content, xml, line_numbers):
     if xml:
-        print_as_xml(writer, path, content)
+        print_as_xml(writer, path, content, line_numbers)
     else:
-        print_default(writer, path, content)
+        print_default(writer, path, content, line_numbers)
 
 
-def print_default(writer, path, content):
+def print_default(writer, path, content, line_numbers):
     writer(path)
     writer("---")
+    if line_numbers:
+        content = add_line_numbers(content)
     writer(content)
     writer("")
     writer("---")
 
 
-def print_as_xml(writer, path, content):
+def print_as_xml(writer, path, content, line_numbers):
     global global_index
     writer(f'<document index="{global_index}">')
     writer(f"<source>{path}</source>")
     writer("<document_content>")
+    if line_numbers:
+        content = add_line_numbers(content)
     writer(content)
     writer("</document_content>")
     writer("</document>")
@@ -60,11 +73,12 @@ def process_path(
     ignore_patterns,
     writer,
     claude_xml,
+    line_numbers=False,
 ):
     if os.path.isfile(path):
         try:
             with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml)
+                print_path(writer, path, f.read(), claude_xml, line_numbers)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -101,7 +115,9 @@ def process_path(
                 file_path = os.path.join(root, file)
                 try:
                     with open(file_path, "r") as f:
-                        print_path(writer, file_path, f.read(), claude_xml)
+                        print_path(
+                            writer, file_path, f.read(), claude_xml, line_numbers
+                        )
                 except UnicodeDecodeError:
                     warning_message = (
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
@@ -143,6 +159,13 @@ def process_path(
     is_flag=True,
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
+@click.option(
+    "line_numbers",
+    "-n",
+    "--line-numbers",
+    is_flag=True,
+    help="Add line numbers to the output",
+)
 @click.version_option()
 def cli(
     paths,
@@ -152,6 +175,7 @@ def cli(
     ignore_patterns,
     output_file,
     claude_xml,
+    line_numbers,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -204,6 +228,7 @@ def cli(
             ignore_patterns,
             writer,
             claude_xml,
+            line_numbers,
         )
     if claude_xml:
         writer("</documents>")

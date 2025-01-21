@@ -279,3 +279,31 @@ Contents of file2.txt
 ---
 """
         assert expected.strip() == actual.strip()
+
+
+def test_line_numbers(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        test_content = "First line\nSecond line\nThird line\nFourth line\n"
+        with open("test_dir/multiline.txt", "w") as f:
+            f.write(test_content)
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert "1  First line" not in result.output
+        assert test_content in result.output
+
+        result = runner.invoke(cli, ["test_dir", "-n"])
+        assert result.exit_code == 0
+        assert "1  First line" in result.output
+        assert "2  Second line" in result.output
+        assert "3  Third line" in result.output
+        assert "4  Fourth line" in result.output
+
+        result = runner.invoke(cli, ["test_dir", "--line-numbers"])
+        assert result.exit_code == 0
+        assert "1  First line" in result.output
+        assert "2  Second line" in result.output
+        assert "3  Third line" in result.output
+        assert "4  Fourth line" in result.output
