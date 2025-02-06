@@ -52,7 +52,7 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
   ```
 
-- `c/--cxml`: Output in Claude XML format.
+- `-c/--cxml`: Output in Claude XML format.
 
   ```bash
   files-to-prompt path/to/directory --cxml
