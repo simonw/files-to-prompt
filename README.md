@@ -41,6 +41,11 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --include-hidden
   ```
 
+- `--ignore <pattern>`: Specify one or more patterns to ignore. Can be used multiple times. Patterns may match file names and directory names, unless you also specify `--ignore-files-only`. Pattern syntax uses [fnmatch](https://docs.python.org/3/library/fnmatch.html), which supports `*`, `?`, `[anychar]`, `[!notchars]` and `[?]` for special character literals.
+  ```bash
+  files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
+  ```
+
 - `--ignore-files-only`: Include directory paths which would otherwise be ignored by an `--ignore` pattern.
 
   ```bash
@@ -51,11 +56,6 @@ This will output the contents of every file, with each file preceded by its rela
 
   ```bash
   files-to-prompt path/to/directory --ignore-gitignore
-  ```
-
-- `--ignore <pattern>`: Specify one or more patterns to ignore. Can be used multiple times. Patterns may match file names and directory names, unless you also specify `--ignore-files-only`.
-  ```bash
-  files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
   ```
 
 - `-c/--cxml`: Output in Claude XML format.
