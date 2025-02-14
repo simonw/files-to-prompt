@@ -41,10 +41,10 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --include-hidden
   ```
 
-- `--include-directories`: Include directory paths which would otherwise be ignored by an `--ignore` pattern.
+- `--ignore-files-only`: Include directory paths which would otherwise be ignored by an `--ignore` pattern.
 
   ```bash
-  files-to-prompt path/to/directory --include-directories --ignore "*dir*"
+  files-to-prompt path/to/directory --ignore-files-only --ignore "*dir*"
   ```
 
 - `--ignore-gitignore`: Ignore `.gitignore` files and include all files.
@@ -53,7 +53,7 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --ignore-gitignore
   ```
 
-- `--ignore <pattern>`: Specify one or more patterns to ignore. Can be used multiple times. Patterns may match file names and directory names, unless you also specify `--include-directories`.
+- `--ignore <pattern>`: Specify one or more patterns to ignore. Can be used multiple times. Patterns may match file names and directory names, unless you also specify `--ignore-files-only`.
   ```bash
   files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
   ```
@@ -144,7 +144,7 @@ Contents of file3.txt
 ---
 ```
 
-If you run `files-to-prompt my_directory --ignore "sub*"`, the output will exclude all files in `subdirectory/` (unless you also specify `--include-directories`):
+If you run `files-to-prompt my_directory --ignore "sub*"`, the output will exclude all files in `subdirectory/` (unless you also specify `--ignore-files-only`):
 
 ```
 my_directory/file1.txt

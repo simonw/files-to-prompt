@@ -106,16 +106,20 @@ def test_ignore_patterns(tmpdir):
         result = runner.invoke(cli, ["test_dir", "--ignore", "*subdir*"])
         assert result.exit_code == 0
         assert "test_dir/test_subdir/any_file.txt" not in result.output
-        assert "This entire subdirectory should be ignored due to ignore patterns" not in result.output
+        assert (
+            "This entire subdirectory should be ignored due to ignore patterns"
+            not in result.output
+        )
         assert "test_dir/file_to_include.txt" in result.output
         assert "This file should be included" in result.output
         assert "This file should be included" in result.output
-        
-        
-        result = runner.invoke(cli, ["test_dir", "--ignore", "*subdir*", "--include-directories"])
+
+        result = runner.invoke(
+            cli, ["test_dir", "--ignore", "*subdir*", "--ignore-files-only"]
+        )
         assert result.exit_code == 0
         assert "test_dir/test_subdir/any_file.txt" in result.output
-        
+
         result = runner.invoke(cli, ["test_dir", "--ignore", ""])
 
 

@@ -68,7 +68,7 @@ def process_path(
     path,
     extensions,
     include_hidden,
-    include_directories,
+    ignore_files_only,
     ignore_gitignore,
     gitignore_rules,
     ignore_patterns,
@@ -103,7 +103,7 @@ def process_path(
                 ]
 
             if ignore_patterns:
-                if not include_directories:
+                if not ignore_files_only:
                     dirs[:] = [
                         d
                         for d in dirs
@@ -141,9 +141,9 @@ def process_path(
     help="Include files and folders starting with .",
 )
 @click.option(
-    "--include-directories",
+    "--ignore-files-only",
     is_flag=True,
-    help="Include directories whose names match the patterns",
+    help="--ignore option only ignores files",
 )
 @click.option(
     "--ignore-gitignore",
@@ -183,7 +183,7 @@ def cli(
     paths,
     extensions,
     include_hidden,
-    include_directories,
+    ignore_files_only,
     ignore_gitignore,
     ignore_patterns,
     output_file,
@@ -236,7 +236,7 @@ def cli(
             path,
             extensions,
             include_hidden,
-            include_directories,
+            ignore_files_only,
             ignore_gitignore,
             gitignore_rules,
             ignore_patterns,
