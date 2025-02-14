@@ -210,7 +210,7 @@ def cli(
     writer = click.echo
     fp = None
     if output_file:
-        fp = open(output_file, "w", encoding='utf-8')
+        fp = open(output_file, "w", encoding="utf-8")
         writer = lambda s: print(s, file=fp)
     for path in paths:
         if not os.path.exists(path):
