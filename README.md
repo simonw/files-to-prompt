@@ -64,6 +64,22 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory -o output.txt
   ```
 
+- `-n/--line-numbers`: Include line numbers in the output.
+
+  ```bash
+  files-to-prompt path/to/directory -n
+  ```
+  Example output:
+  ```
+  files_to_prompt/cli.py
+  ---
+    1  import os
+    2  from fnmatch import fnmatch
+    3
+    4  import click
+    ...
+  ```
+
 ### Example
 
 Suppose you have a directory structure like this:
