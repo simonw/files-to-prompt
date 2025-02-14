@@ -119,6 +119,31 @@ def test_ignore_patterns(tmpdir):
         result = runner.invoke(cli, ["test_dir", "--ignore", ""])
 
 
+def test_specific_extensions(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        # Write one.txt one.py two/two.txt two/two.py three.md
+        os.makedirs("test_dir/two")
+        with open("test_dir/one.txt", "w") as f:
+            f.write("This is one.txt")
+        with open("test_dir/one.py", "w") as f:
+            f.write("This is one.py")
+        with open("test_dir/two/two.txt", "w") as f:
+            f.write("This is two/two.txt")
+        with open("test_dir/two/two.py", "w") as f:
+            f.write("This is two/two.py")
+        with open("test_dir/three.md", "w") as f:
+            f.write("This is three.md")
+
+        # Try with -e py -e md
+        result = runner.invoke(cli, ["test_dir", "-e", "py", "-e", "md"])
+        assert result.exit_code == 0
+        assert ".txt" not in result.output
+        assert "test_dir/one.py" in result.output
+        assert "test_dir/two/two.py" in result.output
+        assert "test_dir/three.md" in result.output
+
+
 def test_mixed_paths_with_options(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
@@ -265,3 +290,31 @@ Contents of file2.txt
 ---
 """
         assert expected.strip() == actual.strip()
+
+
+def test_line_numbers(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        test_content = "First line\nSecond line\nThird line\nFourth line\n"
+        with open("test_dir/multiline.txt", "w") as f:
+            f.write(test_content)
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert "1  First line" not in result.output
+        assert test_content in result.output
+
+        result = runner.invoke(cli, ["test_dir", "-n"])
+        assert result.exit_code == 0
+        assert "1  First line" in result.output
+        assert "2  Second line" in result.output
+        assert "3  Third line" in result.output
+        assert "4  Fourth line" in result.output
+
+        result = runner.invoke(cli, ["test_dir", "--line-numbers"])
+        assert result.exit_code == 0
+        assert "1  First line" in result.output
+        assert "2  Second line" in result.output
+        assert "3  Third line" in result.output
+        assert "4  Fourth line" in result.output

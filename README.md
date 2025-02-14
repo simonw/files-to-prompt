@@ -29,6 +29,12 @@ This will output the contents of every file, with each file preceded by its rela
 
 ### Options
 
+- `-e/--extension <extension>`: Only include files with the specified extension. Can be used multiple times.
+
+  ```bash
+  files-to-prompt path/to/directory -e txt -e md
+  ```
+
 - `--include-hidden`: Include files and folders starting with `.` (hidden files and directories).
 
   ```bash
@@ -52,7 +58,7 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --ignore "*.log" --ignore "temp*"
   ```
 
-- `c/--cxml`: Output in Claude XML format.
+- `-c/--cxml`: Output in Claude XML format.
 
   ```bash
   files-to-prompt path/to/directory --cxml
@@ -62,6 +68,22 @@ This will output the contents of every file, with each file preceded by its rela
 
   ```bash
   files-to-prompt path/to/directory -o output.txt
+  ```
+
+- `-n/--line-numbers`: Include line numbers in the output.
+
+  ```bash
+  files-to-prompt path/to/directory -n
+  ```
+  Example output:
+  ```
+  files_to_prompt/cli.py
+  ---
+    1  import os
+    2  from fnmatch import fnmatch
+    3
+    4  import click
+    ...
   ```
 
 ### Example

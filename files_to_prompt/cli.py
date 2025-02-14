@@ -25,26 +25,39 @@ def read_gitignore(path):
     return []
 
 
-def print_path(writer, path, content, xml):
+def add_line_numbers(content):
+    lines = content.splitlines()
+
+    padding = len(str(len(lines)))
+
+    numbered_lines = [f"{i+1:{padding}}  {line}" for i, line in enumerate(lines)]
+    return "\n".join(numbered_lines)
+
+
+def print_path(writer, path, content, xml, line_numbers):
     if xml:
-        print_as_xml(writer, path, content)
+        print_as_xml(writer, path, content, line_numbers)
     else:
-        print_default(writer, path, content)
+        print_default(writer, path, content, line_numbers)
 
 
-def print_default(writer, path, content):
+def print_default(writer, path, content, line_numbers):
     writer(path)
     writer("---")
+    if line_numbers:
+        content = add_line_numbers(content)
     writer(content)
     writer("")
     writer("---")
 
 
-def print_as_xml(writer, path, content):
+def print_as_xml(writer, path, content, line_numbers):
     global global_index
     writer(f'<document index="{global_index}">')
     writer(f"<source>{path}</source>")
     writer("<document_content>")
+    if line_numbers:
+        content = add_line_numbers(content)
     writer(content)
     writer("</document_content>")
     writer("</document>")
@@ -53,6 +66,7 @@ def print_as_xml(writer, path, content):
 
 def process_path(
     path,
+    extensions,
     include_hidden,
     include_directories,
     ignore_gitignore,
@@ -60,11 +74,12 @@ def process_path(
     ignore_patterns,
     writer,
     claude_xml,
+    line_numbers=False,
 ):
     if os.path.isfile(path):
         try:
             with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml)
+                print_path(writer, path, f.read(), claude_xml, line_numbers)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -100,11 +115,16 @@ def process_path(
                     if not any(fnmatch(f, pattern) for pattern in ignore_patterns)
                 ]
 
+            if extensions:
+                files = [f for f in files if f.endswith(extensions)]
+
             for file in sorted(files):
                 file_path = os.path.join(root, file)
                 try:
                     with open(file_path, "r") as f:
-                        print_path(writer, file_path, f.read(), claude_xml)
+                        print_path(
+                            writer, file_path, f.read(), claude_xml, line_numbers
+                        )
                 except UnicodeDecodeError:
                     warning_message = (
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
@@ -114,6 +134,7 @@ def process_path(
 
 @click.command()
 @click.argument("paths", nargs=-1, type=click.Path(exists=True))
+@click.option("extensions", "-e", "--extension", multiple=True)
 @click.option(
     "--include-hidden",
     is_flag=True,
@@ -150,35 +171,50 @@ def process_path(
     is_flag=True,
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
+@click.option(
+    "line_numbers",
+    "-n",
+    "--line-numbers",
+    is_flag=True,
+    help="Add line numbers to the output",
+)
 @click.version_option()
 def cli(
-    paths, include_hidden, include_directories, ignore_gitignore, ignore_patterns, output_file, claude_xml
+    paths,
+    extensions,
+    include_hidden,
+    include_directories,
+    ignore_gitignore,
+    ignore_patterns,
+    output_file,
+    claude_xml,
+    line_numbers,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
     recursively, each one preceded with its filename like this:
 
-    path/to/file.py
-    ----
-    Contents of file.py goes here
-
-    ---
-    path/to/file2.py
-    ---
-    ...
+    \b
+        path/to/file.py
+        ----
+        Contents of file.py goes here
+        ---
+        path/to/file2.py
+        ---
+        ...
 
     If the `--cxml` flag is provided, the output will be structured as follows:
 
-    <documents>
-    <document path="path/to/file1.txt">
-    Contents of file1.txt
-    </document>
-
-    <document path="path/to/file2.txt">
-    Contents of file2.txt
-    </document>
-    ...
-    </documents>
+    \b
+        <documents>
+        <document path="path/to/file1.txt">
+        Contents of file1.txt
+        </document>
+        <document path="path/to/file2.txt">
+        Contents of file2.txt
+        </document>
+        ...
+        </documents>
     """
     # Reset global_index for pytest
     global global_index
@@ -187,7 +223,7 @@ def cli(
     writer = click.echo
     fp = None
     if output_file:
-        fp = open(output_file, "w")
+        fp = open(output_file, "w", encoding="utf-8")
         writer = lambda s: print(s, file=fp)
     for path in paths:
         if not os.path.exists(path):
@@ -198,6 +234,7 @@ def cli(
             writer("<documents>")
         process_path(
             path,
+            extensions,
             include_hidden,
             include_directories,
             ignore_gitignore,
@@ -205,6 +242,7 @@ def cli(
             ignore_patterns,
             writer,
             claude_xml,
+            line_numbers,
         )
     if claude_xml:
         writer("</documents>")
