@@ -6,6 +6,23 @@ import click
 
 global_index = 1
 
+EXT_TO_LANG = {
+    "py": "python",
+    "c": "c",
+    "cpp": "cpp",
+    "java": "java",
+    "js": "javascript",
+    "ts": "typescript",
+    "html": "html",
+    "css": "css",
+    "xml": "xml",
+    "json": "json",
+    "yaml": "yaml",
+    "yml": "yaml",
+    "sh": "bash",
+    "rb": "ruby",
+}
+
 
 def should_ignore(path, gitignore_rules):
     for rule in gitignore_rules:
@@ -35,9 +52,11 @@ def add_line_numbers(content):
     return "\n".join(numbered_lines)
 
 
-def print_path(writer, path, content, xml, line_numbers):
-    if xml:
+def print_path(writer, path, content, cxml, code, line_numbers):
+    if cxml:
         print_as_xml(writer, path, content, line_numbers)
+    elif code:
+        print_as_code(writer, path, content, line_numbers)
     else:
         print_default(writer, path, content, line_numbers)
 
@@ -65,6 +84,20 @@ def print_as_xml(writer, path, content, line_numbers):
     global_index += 1
 
 
+def print_as_code(writer, path, content, line_numbers):
+    lang = EXT_TO_LANG.get(path.split(".")[-1], "")
+    # Figure out how many backticks to use
+    backticks = "```"
+    while backticks in content:
+        backticks += "`"
+    writer(path)
+    writer(f"{backticks}{lang}")
+    if line_numbers:
+        content = add_line_numbers(content)
+    writer(content)
+    writer(f"{backticks}")
+
+
 def process_path(
     path,
     extensions,
@@ -75,12 +108,13 @@ def process_path(
     ignore_patterns,
     writer,
     claude_xml,
+    code,
     line_numbers=False,
 ):
     if os.path.isfile(path):
         try:
             with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml, line_numbers)
+                print_path(writer, path, f.read(), claude_xml, code, line_numbers)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -124,7 +158,7 @@ def process_path(
                 try:
                     with open(file_path, "r") as f:
                         print_path(
-                            writer, file_path, f.read(), claude_xml, line_numbers
+                            writer, file_path, f.read(), claude_xml, code, line_numbers
                         )
                 except UnicodeDecodeError:
                     warning_message = (
@@ -186,6 +220,9 @@ def read_paths_from_stdin(use_null_separator):
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
 @click.option(
+    "--code", is_flag=True, help="Output in triple backtick fenced code blocks"
+)
+@click.option(
     "line_numbers",
     "-n",
     "--line-numbers",
@@ -208,6 +245,7 @@ def cli(
     ignore_patterns,
     output_file,
     claude_xml,
+    code,
     line_numbers,
     null,
 ):
@@ -236,6 +274,14 @@ def cli(
         </document>
         ...
         </documents>
+
+    If the `--code` flag is provided, the output will be structured as follows:
+
+    \b
+        path/to/file1.py
+        ```python
+        Contents of file1.py
+        ```
     """
     # Reset global_index for pytest
     global global_index
@@ -270,6 +316,7 @@ def cli(
             ignore_patterns,
             writer,
             claude_xml,
+            code,
             line_numbers,
         )
     if claude_xml:

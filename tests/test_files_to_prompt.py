@@ -375,3 +375,39 @@ def test_paths_from_arguments_and_stdin(tmpdir):
         assert "Contents of file1" in result.output
         assert "test_dir2/file2.txt" in result.output
         assert "Contents of file2" in result.output
+
+
+def test_code(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/python.py", "w") as f:
+            f.write("This is python")
+        with open("test_dir/python_with_quad_backticks.py", "w") as f:
+            f.write("This is python with ```` in it already")
+        with open("test_dir/code.js", "w") as f:
+            f.write("This is javascript")
+        with open("test_dir/code.unknown", "w") as f:
+            f.write("This is an unknown file type")
+        result = runner.invoke(cli, ["test_dir", "--code"])
+        assert result.exit_code == 0
+        actual = result.output
+        expected = (
+            "test_dir/code.js\n"
+            "```javascript\n"
+            "This is javascript\n"
+            "```\n"
+            "test_dir/code.unknown\n"
+            "```\n"
+            "This is an unknown file type\n"
+            "```\n"
+            "test_dir/python.py\n"
+            "```python\n"
+            "This is python\n"
+            "```\n"
+            "test_dir/python_with_quad_backticks.py\n"
+            "`````python\n"
+            "This is python with ```` in it already\n"
+            "`````\n"
+        )
+        assert expected.strip() == actual.strip()

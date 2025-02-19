@@ -64,6 +64,12 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --cxml
   ```
 
+- `--code`: Output as fenced code blocks.
+
+  ```bash
+  files-to-prompt path/to/directory --code
+  ```
+
 - `-o/--output <file>`: Write the output to a file instead of printing it to the console.
 
   ```bash
@@ -207,6 +213,40 @@ Contents of file2.txt
 </document>
 </documents>
 ```
+
+## --code fenced code block output
+
+The `--code` option will output the files as fenced code blocks, which can be useful for pasting into Markdown documents.
+
+```bash
+files-to-prompt path/to/directory --code
+```
+The language tag will be guessed based on the filename.
+
+If the code itself contains triple backticks the wrapper around it will use one additional backtick.
+
+Example output:
+`````
+myfile.py
+```python
+def my_function():
+    return "Hello, world!"
+```
+other.js
+```javascript
+function myFunction() {
+    return "Hello, world!";
+}
+```
+file_with_triple_backticks.md
+````markdown
+This file has its own
+```
+fenced code blocks
+```
+Inside it.
+````
+`````
 
 ## Development
 
