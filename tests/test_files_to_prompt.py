@@ -377,7 +377,8 @@ def test_paths_from_arguments_and_stdin(tmpdir):
         assert "Contents of file2" in result.output
 
 
-def test_markdown(tmpdir):
+@pytest.mark.parametrize("option", ("-m", "--markdown"))
+def test_markdown(tmpdir, option):
     runner = CliRunner()
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
@@ -389,7 +390,7 @@ def test_markdown(tmpdir):
             f.write("This is javascript")
         with open("test_dir/code.unknown", "w") as f:
             f.write("This is an unknown file type")
-        result = runner.invoke(cli, ["test_dir", "--markdown"])
+        result = runner.invoke(cli, ["test_dir", option])
         assert result.exit_code == 0
         actual = result.output
         expected = (

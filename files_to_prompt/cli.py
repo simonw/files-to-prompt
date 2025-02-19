@@ -225,6 +225,8 @@ def read_paths_from_stdin(use_null_separator):
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
 @click.option(
+    "markdown",
+    "-m",
     "--markdown",
     is_flag=True,
     help="Output Markdown with fenced code blocks",

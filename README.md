@@ -64,7 +64,7 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --cxml
   ```
 
-- `--markdown`: Output as Markdown with fenced code blocks.
+- `-m/--markdown`: Output as Markdown with fenced code blocks.
 
   ```bash
   files-to-prompt path/to/directory --markdown
