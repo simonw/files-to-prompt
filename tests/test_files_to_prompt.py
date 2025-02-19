@@ -1,8 +1,10 @@
 import os
 import pytest
 import re
+from importlib.metadata import version as imp_version
 
 from click.testing import CliRunner
+from packaging.version import Version
 
 from files_to_prompt.cli import cli
 
@@ -235,7 +237,10 @@ def test_mixed_paths_with_options(tmpdir):
 
 
 def test_binary_file_warning(tmpdir):
-    runner = CliRunner(mix_stderr=False)
+    if Version(imp_version("click")) >= Version("8.2.0"):
+        runner = CliRunner()
+    else:
+        runner = CliRunner(mix_stderr=False)
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
         with open("test_dir/binary_file.bin", "wb") as f:
