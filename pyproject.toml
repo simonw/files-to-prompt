@@ -10,7 +10,8 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
-    "click"
+    "click",
+    "pathspec",
 ]
 
 [project.urls]
