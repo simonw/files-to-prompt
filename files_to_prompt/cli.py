@@ -1,7 +1,8 @@
 import os
 import sys
 from fnmatch import fnmatch
-
+from files_to_prompt.utils import allowed_by_gitignore
+import pathlib
 import click
 
 global_index = 1
@@ -22,25 +23,6 @@ EXT_TO_LANG = {
     "sh": "bash",
     "rb": "ruby",
 }
-
-
-def should_ignore(path, gitignore_rules):
-    for rule in gitignore_rules:
-        if fnmatch(os.path.basename(path), rule):
-            return True
-        if os.path.isdir(path) and fnmatch(os.path.basename(path) + "/", rule):
-            return True
-    return False
-
-
-def read_gitignore(path):
-    gitignore_path = os.path.join(path, ".gitignore")
-    if os.path.isfile(gitignore_path):
-        with open(gitignore_path, "r") as f:
-            return [
-                line.strip() for line in f if line.strip() and not line.startswith("#")
-            ]
-    return []
 
 
 def add_line_numbers(content):
@@ -104,7 +86,6 @@ def process_path(
     include_hidden,
     ignore_files_only,
     ignore_gitignore,
-    gitignore_rules,
     ignore_patterns,
     writer,
     claude_xml,
@@ -124,17 +105,13 @@ def process_path(
                 dirs[:] = [d for d in dirs if not d.startswith(".")]
                 files = [f for f in files if not f.startswith(".")]
 
+            root_path = pathlib.Path(root)
             if not ignore_gitignore:
-                gitignore_rules.extend(read_gitignore(root))
                 dirs[:] = [
-                    d
-                    for d in dirs
-                    if not should_ignore(os.path.join(root, d), gitignore_rules)
+                    d for d in dirs if allowed_by_gitignore(root_path, root_path / d)
                 ]
                 files = [
-                    f
-                    for f in files
-                    if not should_ignore(os.path.join(root, f), gitignore_rules)
+                    f for f in files if allowed_by_gitignore(root_path, root_path / f)
                 ]
 
             if ignore_patterns:
@@ -302,7 +279,6 @@ def cli(
     # Combine paths from arguments and stdin
     paths = [*paths, *stdin_paths]
 
-    gitignore_rules = []
     writer = click.echo
     fp = None
     if output_file:
@@ -311,8 +287,6 @@ def cli(
     for path in paths:
         if not os.path.exists(path):
             raise click.BadArgumentUsage(f"Path does not exist: {path}")
-        if not ignore_gitignore:
-            gitignore_rules.extend(read_gitignore(os.path.dirname(path)))
         if claude_xml and path == paths[0]:
             writer("<documents>")
         process_path(
@@ -321,7 +295,6 @@ def cli(
             include_hidden,
             ignore_files_only,
             ignore_gitignore,
-            gitignore_rules,
             ignore_patterns,
             writer,
             claude_xml,

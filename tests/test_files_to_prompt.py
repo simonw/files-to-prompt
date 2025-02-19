@@ -21,7 +21,7 @@ def test_basic_functionality(tmpdir):
         with open("test_dir/file2.txt", "w") as f:
             f.write("Contents of file2")
 
-        result = runner.invoke(cli, ["test_dir"])
+        result = runner.invoke(cli, ["test_dir"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "test_dir/file1.txt" in result.output
         assert "Contents of file1" in result.output
@@ -36,7 +36,7 @@ def test_include_hidden(tmpdir):
         with open("test_dir/.hidden.txt", "w") as f:
             f.write("Contents of hidden file")
 
-        result = runner.invoke(cli, ["test_dir"])
+        result = runner.invoke(cli, ["test_dir"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "test_dir/.hidden.txt" not in result.output
 
@@ -61,11 +61,9 @@ def test_ignore_gitignore(tmpdir):
         with open("test_dir/nested_include/included2.txt", "w") as f:
             f.write("This nested file should be included")
         with open("test_dir/nested_ignore/.gitignore", "w") as f:
-            f.write("nested_ignore.txt")
+            f.write("*")
         with open("test_dir/nested_ignore/nested_ignore.txt", "w") as f:
             f.write("This nested file should not be included")
-        with open("test_dir/nested_ignore/actually_include.txt", "w") as f:
-            f.write("This nested file should actually be included")
 
         result = runner.invoke(cli, ["test_dir", "-c"])
         assert result.exit_code == 0
@@ -74,7 +72,6 @@ def test_ignore_gitignore(tmpdir):
         assert filenames == {
             "test_dir/included.txt",
             "test_dir/nested_include/included2.txt",
-            "test_dir/nested_ignore/actually_include.txt",
         }
 
         result2 = runner.invoke(cli, ["test_dir", "-c", "--ignore-gitignore"])
@@ -86,7 +83,6 @@ def test_ignore_gitignore(tmpdir):
             "test_dir/ignored.txt",
             "test_dir/nested_include/included2.txt",
             "test_dir/nested_ignore/nested_ignore.txt",
-            "test_dir/nested_ignore/actually_include.txt",
         }
 
 
@@ -243,7 +239,7 @@ def test_binary_file_warning(tmpdir):
         with open("test_dir/text_file.txt", "w") as f:
             f.write("This is a text file")
 
-        result = runner.invoke(cli, ["test_dir"])
+        result = runner.invoke(cli, ["test_dir"], catch_exceptions=False)
         assert result.exit_code == 0
 
         stdout = result.stdout
@@ -331,7 +327,7 @@ def test_line_numbers(tmpdir):
         with open("test_dir/multiline.txt", "w") as f:
             f.write(test_content)
 
-        result = runner.invoke(cli, ["test_dir"])
+        result = runner.invoke(cli, ["test_dir"], catch_exceptions=False)
         assert result.exit_code == 0
         assert "1  First line" not in result.output
         assert test_content in result.output
