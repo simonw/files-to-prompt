@@ -52,11 +52,11 @@ def add_line_numbers(content):
     return "\n".join(numbered_lines)
 
 
-def print_path(writer, path, content, cxml, code, line_numbers):
+def print_path(writer, path, content, cxml, markdown, line_numbers):
     if cxml:
         print_as_xml(writer, path, content, line_numbers)
-    elif code:
-        print_as_code(writer, path, content, line_numbers)
+    elif markdown:
+        print_as_markdown(writer, path, content, line_numbers)
     else:
         print_default(writer, path, content, line_numbers)
 
@@ -84,7 +84,7 @@ def print_as_xml(writer, path, content, line_numbers):
     global_index += 1
 
 
-def print_as_code(writer, path, content, line_numbers):
+def print_as_markdown(writer, path, content, line_numbers):
     lang = EXT_TO_LANG.get(path.split(".")[-1], "")
     # Figure out how many backticks to use
     backticks = "```"
@@ -108,13 +108,13 @@ def process_path(
     ignore_patterns,
     writer,
     claude_xml,
-    code,
+    markdown,
     line_numbers=False,
 ):
     if os.path.isfile(path):
         try:
             with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml, code, line_numbers)
+                print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -158,7 +158,12 @@ def process_path(
                 try:
                     with open(file_path, "r") as f:
                         print_path(
-                            writer, file_path, f.read(), claude_xml, code, line_numbers
+                            writer,
+                            file_path,
+                            f.read(),
+                            claude_xml,
+                            markdown,
+                            line_numbers,
                         )
                 except UnicodeDecodeError:
                     warning_message = (
@@ -220,7 +225,9 @@ def read_paths_from_stdin(use_null_separator):
     help="Output in XML-ish format suitable for Claude's long context window.",
 )
 @click.option(
-    "--code", is_flag=True, help="Output in triple backtick fenced code blocks"
+    "--markdown",
+    is_flag=True,
+    help="Output Markdown with fenced code blocks",
 )
 @click.option(
     "line_numbers",
@@ -245,7 +252,7 @@ def cli(
     ignore_patterns,
     output_file,
     claude_xml,
-    code,
+    markdown,
     line_numbers,
     null,
 ):
@@ -275,7 +282,7 @@ def cli(
         ...
         </documents>
 
-    If the `--code` flag is provided, the output will be structured as follows:
+    If the `--markdown` flag is provided, the output will be structured as follows:
 
     \b
         path/to/file1.py
@@ -316,7 +323,7 @@ def cli(
             ignore_patterns,
             writer,
             claude_xml,
-            code,
+            markdown,
             line_numbers,
         )
     if claude_xml:

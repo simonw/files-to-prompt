@@ -377,7 +377,7 @@ def test_paths_from_arguments_and_stdin(tmpdir):
         assert "Contents of file2" in result.output
 
 
-def test_code(tmpdir):
+def test_markdown(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
@@ -389,7 +389,7 @@ def test_code(tmpdir):
             f.write("This is javascript")
         with open("test_dir/code.unknown", "w") as f:
             f.write("This is an unknown file type")
-        result = runner.invoke(cli, ["test_dir", "--code"])
+        result = runner.invoke(cli, ["test_dir", "--markdown"])
         assert result.exit_code == 0
         actual = result.output
         expected = (

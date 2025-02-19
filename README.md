@@ -64,10 +64,10 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --cxml
   ```
 
-- `--code`: Output as fenced code blocks.
+- `--markdown`: Output as Markdown with fenced code blocks.
 
   ```bash
-  files-to-prompt path/to/directory --code
+  files-to-prompt path/to/directory --markdown
   ```
 
 - `-o/--output <file>`: Write the output to a file instead of printing it to the console.
@@ -214,12 +214,12 @@ Contents of file2.txt
 </documents>
 ```
 
-## --code fenced code block output
+## --markdown fenced code block output
 
-The `--code` option will output the files as fenced code blocks, which can be useful for pasting into Markdown documents.
+The `--markdown` option will output the files as fenced code blocks, which can be useful for pasting into Markdown documents.
 
 ```bash
-files-to-prompt path/to/directory --code
+files-to-prompt path/to/directory --markdown
 ```
 The language tag will be guessed based on the filename.
 
