@@ -86,6 +86,12 @@ This will output the contents of every file, with each file preceded by its rela
     ...
   ```
 
+- `-0/--null`: Use NUL character as separator when reading paths from stdin. Useful when filenames may contain spaces.
+
+  ```bash
+  find . -name "*.py" -print0 | files-to-prompt --null
+  ```
+
 ### Example
 
 Suppose you have a directory structure like this:
@@ -155,6 +161,28 @@ my_directory/file2.txt
 ---
 Contents of file2.txt
 ---
+```
+
+### Reading from stdin
+
+The tool can also read paths from standard input. This can be used to pipe in the output of another command:
+
+```bash
+# Find files modified in the last day
+find . -mtime -1 | files-to-prompt
+```
+
+When using the `--null` (or `-0`) option, paths are expected to be NUL-separated (useful when dealing with filenames containing spaces):
+
+```bash
+find . -name "*.txt" -print0 | files-to-prompt --null
+```
+
+You can mix and match paths from command line arguments and stdin:
+
+```bash
+# Include files modified in the last day, and also include README.md
+find . -mtime -1 | files-to-prompt README.md
 ```
 
 ### Claude XML Output
