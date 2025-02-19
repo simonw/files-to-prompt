@@ -1,4 +1,5 @@
 import os
+import sys
 from fnmatch import fnmatch
 
 import click
@@ -30,7 +31,7 @@ def add_line_numbers(content):
 
     padding = len(str(len(lines)))
 
-    numbered_lines = [f"{i+1:{padding}}  {line}" for i, line in enumerate(lines)]
+    numbered_lines = [f"{i + 1:{padding}}  {line}" for i, line in enumerate(lines)]
     return "\n".join(numbered_lines)
 
 
@@ -132,6 +133,19 @@ def process_path(
                     click.echo(click.style(warning_message, fg="red"), err=True)
 
 
+def read_paths_from_stdin(use_null_separator):
+    if sys.stdin.isatty():
+        # No ready input from stdin, don't block for input
+        return []
+
+    stdin_content = sys.stdin.read()
+    if use_null_separator:
+        paths = stdin_content.split("\0")
+    else:
+        paths = stdin_content.split()  # split on whitespace
+    return [p for p in paths if p]
+
+
 @click.command()
 @click.argument("paths", nargs=-1, type=click.Path(exists=True))
 @click.option("extensions", "-e", "--extension", multiple=True)
@@ -178,6 +192,12 @@ def process_path(
     is_flag=True,
     help="Add line numbers to the output",
 )
+@click.option(
+    "--null",
+    "-0",
+    is_flag=True,
+    help="Use NUL character as separator when reading from stdin",
+)
 @click.version_option()
 def cli(
     paths,
@@ -189,6 +209,7 @@ def cli(
     output_file,
     claude_xml,
     line_numbers,
+    null,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -219,6 +240,13 @@ def cli(
     # Reset global_index for pytest
     global global_index
     global_index = 1
+
+    # Read paths from stdin if available
+    stdin_paths = read_paths_from_stdin(use_null_separator=null)
+
+    # Combine paths from arguments and stdin
+    paths = [*paths, *stdin_paths]
+
     gitignore_rules = []
     writer = click.echo
     fp = None

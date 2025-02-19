@@ -322,3 +322,56 @@ def test_line_numbers(tmpdir):
         assert "2  Second line" in result.output
         assert "3  Third line" in result.output
         assert "4  Fourth line" in result.output
+
+
+@pytest.mark.parametrize(
+    "input,extra_args",
+    (
+        ("test_dir1/file1.txt\ntest_dir2/file2.txt", []),
+        ("test_dir1/file1.txt\ntest_dir2/file2.txt", []),
+        ("test_dir1/file1.txt\0test_dir2/file2.txt", ["--null"]),
+        ("test_dir1/file1.txt\0test_dir2/file2.txt", ["-0"]),
+    ),
+)
+def test_reading_paths_from_stdin(tmpdir, input, extra_args):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        # Create test files
+        os.makedirs("test_dir1")
+        os.makedirs("test_dir2")
+        with open("test_dir1/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir2/file2.txt", "w") as f:
+            f.write("Contents of file2")
+
+        # Test space-separated paths from stdin
+        result = runner.invoke(cli, args=extra_args, input=input)
+        assert result.exit_code == 0
+        assert "test_dir1/file1.txt" in result.output
+        assert "Contents of file1" in result.output
+        assert "test_dir2/file2.txt" in result.output
+        assert "Contents of file2" in result.output
+
+
+def test_paths_from_arguments_and_stdin(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        # Create test files
+        os.makedirs("test_dir1")
+        os.makedirs("test_dir2")
+        with open("test_dir1/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir2/file2.txt", "w") as f:
+            f.write("Contents of file2")
+
+        # Test paths from arguments and stdin
+        result = runner.invoke(
+            cli,
+            args=["test_dir1"],
+            input="test_dir2/file2.txt",
+        )
+        assert result.exit_code == 0
+        assert "test_dir1/file1.txt" in result.output
+        assert "Contents of file1" in result.output
+        assert "test_dir2/file2.txt" in result.output
+        assert "Contents of file2" in result.output
