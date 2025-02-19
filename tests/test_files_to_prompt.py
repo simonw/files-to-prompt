@@ -1,9 +1,15 @@
 import os
 import pytest
+import re
 
 from click.testing import CliRunner
 
 from files_to_prompt.cli import cli
+
+
+def filenames_from_cxml(cxml_string):
+    "Return set of filenames from <source>...</source> tags"
+    return set(re.findall(r"<source>(.*?)</source>", cxml_string))
 
 
 def test_basic_functionality(tmpdir):
@@ -44,23 +50,44 @@ def test_ignore_gitignore(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
+        os.makedirs("test_dir/nested_include")
+        os.makedirs("test_dir/nested_ignore")
         with open("test_dir/.gitignore", "w") as f:
             f.write("ignored.txt")
         with open("test_dir/ignored.txt", "w") as f:
             f.write("This file should be ignored")
         with open("test_dir/included.txt", "w") as f:
             f.write("This file should be included")
+        with open("test_dir/nested_include/included2.txt", "w") as f:
+            f.write("This nested file should be included")
+        with open("test_dir/nested_ignore/.gitignore", "w") as f:
+            f.write("nested_ignore.txt")
+        with open("test_dir/nested_ignore/nested_ignore.txt", "w") as f:
+            f.write("This nested file should not be included")
+        with open("test_dir/nested_ignore/actually_include.txt", "w") as f:
+            f.write("This nested file should actually be included")
 
-        result = runner.invoke(cli, ["test_dir"])
+        result = runner.invoke(cli, ["test_dir", "-c"])
         assert result.exit_code == 0
-        assert "test_dir/ignored.txt" not in result.output
-        assert "test_dir/included.txt" in result.output
+        filenames = filenames_from_cxml(result.output)
 
-        result = runner.invoke(cli, ["test_dir", "--ignore-gitignore"])
-        assert result.exit_code == 0
-        assert "test_dir/ignored.txt" in result.output
-        assert "This file should be ignored" in result.output
-        assert "test_dir/included.txt" in result.output
+        assert filenames == {
+            "test_dir/included.txt",
+            "test_dir/nested_include/included2.txt",
+            "test_dir/nested_ignore/actually_include.txt",
+        }
+
+        result2 = runner.invoke(cli, ["test_dir", "-c", "--ignore-gitignore"])
+        assert result2.exit_code == 0
+        filenames2 = filenames_from_cxml(result2.output)
+
+        assert filenames2 == {
+            "test_dir/included.txt",
+            "test_dir/ignored.txt",
+            "test_dir/nested_include/included2.txt",
+            "test_dir/nested_ignore/nested_ignore.txt",
+            "test_dir/nested_ignore/actually_include.txt",
+        }
 
 
 def test_multiple_paths(tmpdir):
