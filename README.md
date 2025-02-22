@@ -123,6 +123,10 @@ my_directory/file2.txt
 ---
 Contents of file2.txt
 ---
+my_directory/temp.log
+---
+Contents of temp.log
+---
 my_directory/subdirectory/file3.txt
 ---
 Contents of file3.txt
