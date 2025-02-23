@@ -439,3 +439,23 @@ def test_markdown(tmpdir, option):
             "`````\n"
         )
         assert expected.strip() == actual.strip()
+
+def test_duplicate_paths(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir/subdir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("File 1 contents")
+        with open("test_dir/subdir/file2.txt", "w") as f:
+            f.write("File 2 contents in subdir")
+
+        # Invoke with both "test_dir" and "test_dir/subdir"
+        result = runner.invoke(cli, ["test_dir", "test_dir/subdir"])
+        assert result.exit_code == 0
+        assert "test_dir/file1.txt" in result.output
+        assert "File 1 contents" in result.output
+        assert "test_dir/subdir/file2.txt" in result.output
+        assert "File 2 contents in subdir" in result.output
+
+        # Ensure file2.txt is included only once
+        assert result.output.count("test_dir/subdir/file2.txt") == 1
