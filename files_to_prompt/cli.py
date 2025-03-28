@@ -328,7 +328,7 @@ def cli(
             markdown,
             line_numbers,
         )
-    if claude_xml:
+    if claude_xml and paths:
         writer("</documents>")
     if fp:
         fp.close()

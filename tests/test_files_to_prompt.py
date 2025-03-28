@@ -403,6 +403,18 @@ def test_paths_from_arguments_and_stdin(tmpdir):
         assert "test_dir2/file2.txt" in result.output
         assert "Contents of file2" in result.output
 
+def test_empty_path_set(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        # Test empty path set
+        result = runner.invoke(
+            cli,
+            args=["-c"],
+            input="",
+        )
+        assert result.exit_code == 0
+        assert "" == result.output
+
 
 @pytest.mark.parametrize("option", ("-m", "--markdown"))
 def test_markdown(tmpdir, option):
