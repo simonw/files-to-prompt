@@ -1,4 +1,6 @@
 import os
+import shlex
+import subprocess
 import sys
 from fnmatch import fnmatch
 
@@ -98,6 +100,46 @@ def print_as_markdown(writer, path, content, line_numbers):
     writer(f"{backticks}")
 
 
+def get_file_content(file_path, execute_command=None):
+    """
+    Get content for a file, either by reading it directly or by executing a command.
+
+    Args:
+        file_path: Path to the file
+        execute_command: Optional command to execute on the file
+
+    Returns:
+        Content of the file or output of the command
+    """
+    if not execute_command:
+        # Default behavior - just read the file
+        with open(file_path, "r") as f:
+            return f.read()
+    else:
+        # Execute command with file path
+        cmd = f"{execute_command} {shlex.quote(file_path)}"
+        try:
+            result = subprocess.run(
+                cmd,
+                shell=True,
+                check=False,  # Don't raise exception on non-zero exit code
+                capture_output=True,
+                text=True,
+                env=os.environ,
+            )
+            if result.returncode != 0:
+                warning_message = f"Warning: Command '{cmd}' failed with exit code {result.returncode}"
+                if result.stderr:
+                    warning_message += f"\nError: {result.stderr}"
+                click.echo(click.style(warning_message, fg="red"), err=True)
+                return f"Error executing command (exit code {result.returncode})"
+            return result.stdout
+        except Exception as e:
+            warning_message = f"Warning: Error executing command '{cmd}': {str(e)}"
+            click.echo(click.style(warning_message, fg="red"), err=True)
+            return f"Error executing command: {str(e)}"
+
+
 def process_path(
     path,
     extensions,
@@ -110,11 +152,12 @@ def process_path(
     claude_xml,
     markdown,
     line_numbers=False,
+    execute_command=None,
 ):
     if os.path.isfile(path):
         try:
-            with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
+            content = get_file_content(path, execute_command)
+            print_path(writer, path, content, claude_xml, markdown, line_numbers)
         except UnicodeDecodeError:
             warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
             click.echo(click.style(warning_message, fg="red"), err=True)
@@ -156,15 +199,15 @@ def process_path(
             for file in sorted(files):
                 file_path = os.path.join(root, file)
                 try:
-                    with open(file_path, "r") as f:
-                        print_path(
-                            writer,
-                            file_path,
-                            f.read(),
-                            claude_xml,
-                            markdown,
-                            line_numbers,
-                        )
+                    content = get_file_content(file_path, execute_command)
+                    print_path(
+                        writer,
+                        file_path,
+                        content,
+                        claude_xml,
+                        markdown,
+                        line_numbers,
+                    )
                 except UnicodeDecodeError:
                     warning_message = (
                         f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
@@ -244,6 +287,12 @@ def read_paths_from_stdin(use_null_separator):
     is_flag=True,
     help="Use NUL character as separator when reading from stdin",
 )
+@click.option(
+    "execute_command",
+    "-x",
+    "--execute",
+    help="Execute this command for each file and use the output as content",
+)
 @click.version_option()
 def cli(
     paths,
@@ -257,6 +306,7 @@ def cli(
     markdown,
     line_numbers,
     null,
+    execute_command,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -291,6 +341,13 @@ def cli(
         ```python
         Contents of file1.py
         ```
+
+    If the --execute option is provided, the tool will execute the specified
+    command for each file and use the command's output as the content instead.
+
+    \b
+        # Show the first 10 lines of each file
+        files-to-prompt path/to/directory --execute "head -n 10"
     """
     # Reset global_index for pytest
     global global_index
@@ -327,6 +384,7 @@ def cli(
             claude_xml,
             markdown,
             line_numbers,
+            execute_command,
         )
     if claude_xml:
         writer("</documents>")

@@ -439,3 +439,92 @@ def test_markdown(tmpdir, option):
             "`````\n"
         )
         assert expected.strip() == actual.strip()
+
+
+@pytest.mark.parametrize("option", ["-x", "--execute"])
+def test_execute_command(tmpdir, option):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n")
+
+        # Test with head command
+        result = runner.invoke(cli, ["test_dir", option, "head -n 2"])
+        assert result.exit_code == 0
+        assert "test_dir/file1.txt" in result.output
+        assert "Line 1" in result.output
+        assert "Line 2" in result.output
+        assert "Line 3" not in result.output
+
+        # Test with grep command
+        result = runner.invoke(cli, ["test_dir", option, "grep 'Line 3'"])
+        assert result.exit_code == 0
+        assert "test_dir/file1.txt" in result.output
+        assert "Line 1" not in result.output
+        assert "Line 2" not in result.output
+        assert "Line 3" in result.output
+        assert "Line 4" not in result.output
+
+
+def test_execute_command_with_error(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+
+        # Test with command that returns non-zero exit code
+        result = runner.invoke(
+            cli, ["test_dir", "--execute", "grep 'nonexistent' || true"]
+        )
+        assert result.exit_code == 0
+        assert "test_dir/file1.txt" in result.stdout
+
+        # Test with invalid command
+        result = runner.invoke(
+            cli, ["test_dir", "--execute", "invalid_command_that_does_not_exist"]
+        )
+        assert result.exit_code == 0
+        assert "test_dir/file1.txt" in result.stdout
+        assert "Error executing command" in result.stdout
+        assert "invalid_command_that_does_not_exist" in result.stderr
+
+
+def test_execute_command_with_output_formats(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Line 1\nLine 2\nLine 3\n")
+
+        # Test with XML output
+        result = runner.invoke(cli, ["test_dir", "--execute", "head -n 1", "--cxml"])
+        assert result.exit_code == 0
+        assert "<source>test_dir/file1.txt</source>" in result.output
+        assert "<document_content>\nLine 1\n\n</document_content>" in result.output
+
+        # Test with Markdown output
+        result = runner.invoke(
+            cli, ["test_dir", "--execute", "head -n 1", "--markdown"]
+        )
+        assert result.exit_code == 0
+        assert "test_dir/file1.txt" in result.output
+        assert "```\nLine 1\n\n```" in result.output
+
+
+def test_execute_command_with_line_numbers(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Line 1\nLine 2\nLine 3\n")
+
+        # Test with line numbers
+        result = runner.invoke(
+            cli, ["test_dir", "--execute", "head -n 2", "--line-numbers"]
+        )
+        assert result.exit_code == 0
+        assert "test_dir/file1.txt" in result.output
+        assert "1  Line 1" in result.output
+        assert "2  Line 2" in result.output
