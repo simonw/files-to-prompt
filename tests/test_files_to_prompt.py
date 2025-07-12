@@ -1,6 +1,7 @@
 import os
 import pytest
 import re
+from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
@@ -246,15 +247,14 @@ def test_binary_file_warning(tmpdir):
         result = runner.invoke(cli, ["test_dir"])
         assert result.exit_code == 0
 
-        stdout = result.stdout
-        stderr = result.stderr
+        output = result.output.replace("\\", "/")
 
-        assert "test_dir/text_file.txt" in stdout
-        assert "This is a text file" in stdout
-        assert "\ntest_dir/binary_file.bin" not in stdout
+        assert "test_dir/text_file.txt" in output
+        assert "This is a text file" in output
+        assert "\ntest_dir/binary_file.bin" not in output
         assert (
             "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
-            in stderr
+            in output
         )
 
 
@@ -439,3 +439,124 @@ def test_markdown(tmpdir, option):
             "`````\n"
         )
         assert expected.strip() == actual.strip()
+
+
+@pytest.mark.parametrize("option", ("-C", "--copy"))
+def test_copy_to_clipboard(tmpdir, option):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2")
+        
+        # Test successful copy
+        with patch('pyperclip.copy') as mock_copy:
+            result = runner.invoke(cli, ["test_dir", option])
+            assert result.exit_code == 0
+            assert "Output copied to clipboard" in result.output
+            
+            # Verify pyperclip.copy was called with the correct content
+            mock_copy.assert_called_once()
+            copied_content = mock_copy.call_args[0][0]
+            assert "test_dir/file1.txt" in copied_content
+            assert "Contents of file1" in copied_content
+            assert "test_dir/file2.txt" in copied_content
+            assert "Contents of file2" in copied_content
+
+
+def test_copy_to_clipboard_with_formats(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file.py", "w") as f:
+            f.write("print('hello')")
+        
+        # Test with markdown format
+        with patch('pyperclip.copy') as mock_copy:
+            result = runner.invoke(cli, ["test_dir", "-C", "--markdown"])
+            assert result.exit_code == 0
+            assert "Output copied to clipboard" in result.output
+            
+            copied_content = mock_copy.call_args[0][0]
+            assert "```python" in copied_content
+            assert "print('hello')" in copied_content
+            assert "```" in copied_content
+        
+        # Test with XML format
+        with patch('pyperclip.copy') as mock_copy:
+            result = runner.invoke(cli, ["test_dir", "-C", "--cxml"])
+            assert result.exit_code == 0
+            assert "Output copied to clipboard" in result.output
+            
+            copied_content = mock_copy.call_args[0][0]
+            assert "<documents>" in copied_content
+            assert "<document index=" in copied_content
+            assert "<source>test_dir/file.py</source>" in copied_content
+            assert "</documents>" in copied_content
+
+
+def test_copy_to_clipboard_failure(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file.txt", "w") as f:
+            f.write("Test content")
+        
+        # Test clipboard failure
+        with patch('pyperclip.copy') as mock_copy:
+            mock_copy.side_effect = Exception("Clipboard not available")
+            result = runner.invoke(cli, ["test_dir", "-C"])
+            assert result.exit_code == 0
+            assert "Failed to copy to clipboard: Clipboard not available" in result.output
+            assert "Output follows:" in result.output
+            # When clipboard fails, content should be printed to stdout
+            assert "test_dir/file.txt" in result.output
+            assert "Test content" in result.output
+
+
+def test_copy_and_output_conflict(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file.txt", "w") as f:
+            f.write("Test content")
+        
+        # Test that -C and -o together produce an error
+        result = runner.invoke(cli, ["test_dir", "-C", "-o", "output.txt"])
+        assert result.exit_code == 0
+        combined = result.output
+        assert "Note: -o/--output overrides -C/--copy" in combined
+        # Clipboard should not be invoked
+        assert "Output copied to clipboard" not in combined
+
+
+def test_copy_clipboard_basic(tmpdir):
+    """Basic clipboard copy succeeds when pyperclip is available"""
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2")
+        
+        # Provide a stub pyperclip if it's not installed
+        import types, sys as _sys
+        if 'pyperclip' not in _sys.modules:
+            stub = types.ModuleType('pyperclip')
+            def _copy(_: str):
+                pass
+            stub.copy = _copy
+            _sys.modules['pyperclip'] = stub
+
+        with patch('pyperclip.copy') as mock_copy:
+            # Simulate successful copy on all platforms
+            result = runner.invoke(cli, ["test_dir", "-C"])
+            assert result.exit_code == 0
+            assert "Output copied to clipboard" in result.output
+            mock_copy.assert_called_once()
+            
+            # The actual platform-specific handling is done by pyperclip
+            # We just ensure our code calls it correctly

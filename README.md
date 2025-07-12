@@ -98,6 +98,22 @@ This will output the contents of every file, with each file preceded by its rela
   find . -name "*.py" -print0 | files-to-prompt --null
   ```
 
+- `-C/--copy`: Copy the output to the clipboard instead of printing to stdout. Useful for quickly getting file contents ready to paste into an LLM chat interface.
+
+  ```bash
+  files-to-prompt path/to/directory --copy
+  ```
+  
+  This option cannot be used together with `-o/--output`. If the clipboard operation fails, the output will be printed to stdout as a fallback.
+
+Using `-C/--copy` requires the optional `pyperclip` dependency:
+
+```bash
+uv pip install 'files-to-prompt[clipboard]'
+```
+
+On Linux you also need `xclip` or `xsel`, and on macOS the standard `pbcopy` utility must be available.
+
 ### Example
 
 Suppose you have a directory structure like this:

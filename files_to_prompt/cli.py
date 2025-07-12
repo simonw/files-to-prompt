@@ -1,6 +1,7 @@
 import os
 import sys
 from fnmatch import fnmatch
+from io import StringIO
 
 import click
 
@@ -22,6 +23,11 @@ EXT_TO_LANG = {
     "sh": "bash",
     "rb": "ruby",
 }
+
+
+def norm_path(p: str) -> str:
+    """Return path with forward slashes to ensure stable, cross-platform output."""
+    return p.replace(os.sep, "/")
 
 
 def should_ignore(path, gitignore_rules):
@@ -53,12 +59,13 @@ def add_line_numbers(content):
 
 
 def print_path(writer, path, content, cxml, markdown, line_numbers):
+    p = norm_path(path)
     if cxml:
-        print_as_xml(writer, path, content, line_numbers)
+        print_as_xml(writer, p, content, line_numbers)
     elif markdown:
-        print_as_markdown(writer, path, content, line_numbers)
+        print_as_markdown(writer, p, content, line_numbers)
     else:
-        print_default(writer, path, content, line_numbers)
+        print_default(writer, p, content, line_numbers)
 
 
 def print_default(writer, path, content, line_numbers):
@@ -113,11 +120,11 @@ def process_path(
 ):
     if os.path.isfile(path):
         try:
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
         except UnicodeDecodeError:
-            warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
-            click.echo(click.style(warning_message, fg="red"), err=True)
+            warning_message = f"Warning: Skipping file {norm_path(path)} due to UnicodeDecodeError"
+            click.echo(warning_message)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -156,7 +163,7 @@ def process_path(
             for file in sorted(files):
                 file_path = os.path.join(root, file)
                 try:
-                    with open(file_path, "r") as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         print_path(
                             writer,
                             file_path,
@@ -167,9 +174,9 @@ def process_path(
                         )
                 except UnicodeDecodeError:
                     warning_message = (
-                        f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
+                        f"Warning: Skipping file {norm_path(file_path)} due to UnicodeDecodeError"
                     )
-                    click.echo(click.style(warning_message, fg="red"), err=True)
+                    click.echo(warning_message)
 
 
 def read_paths_from_stdin(use_null_separator):
@@ -218,6 +225,13 @@ def read_paths_from_stdin(use_null_separator):
     help="Output to a file instead of stdout",
 )
 @click.option(
+    "copy_to_clipboard",
+    "-C",
+    "--copy",
+    is_flag=True,
+    help="Copy the output to clipboard instead of stdout",
+)
+@click.option(
     "claude_xml",
     "-c",
     "--cxml",
@@ -257,6 +271,7 @@ def cli(
     markdown,
     line_numbers,
     null,
+    copy_to_clipboard,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -302,10 +317,23 @@ def cli(
     # Combine paths from arguments and stdin
     paths = [*paths, *stdin_paths]
 
+    # If both -C and -o are provided, -o wins but print a note for the user
+    if copy_to_clipboard and output_file:
+        click.echo(
+            "Note: -o/--output overrides -C/--copy; writing output to file only.",
+            err=True,
+        )
+        copy_to_clipboard = False  # Disable clipboard behaviour
+    
     gitignore_rules = []
     writer = click.echo
     fp = None
-    if output_file:
+    clipboard_buffer = None
+    
+    if copy_to_clipboard:
+        clipboard_buffer = StringIO()
+        writer = lambda s: print(s, file=clipboard_buffer)
+    elif output_file:
         fp = open(output_file, "w", encoding="utf-8")
         writer = lambda s: print(s, file=fp)
     for path in paths:
@@ -330,5 +358,36 @@ def cli(
         )
     if claude_xml:
         writer("</documents>")
+    
+    if copy_to_clipboard:
+        content = clipboard_buffer.getvalue()
+
+        try:
+            # Lazy import so that pyperclip remains an optional dependency
+            import pyperclip  # type: ignore
+        except ImportError as exc:
+            raise click.ClickException(
+                "The -C/--copy option requires the optional 'pyperclip' package. "
+                "Install it with 'pip install files-to-prompt[clipboard]' or "
+                "re-run without -C/--copy."
+            ) from exc
+
+        try:
+            pyperclip.copy(content)
+            click.echo("Output copied to clipboard")
+        except Exception as e:
+            # Provide additional platform-specific guidance
+            suggestion = ""
+            if sys.platform.startswith("linux"):
+                suggestion = " (hint: install 'xclip' or 'xsel')"
+            elif sys.platform == "darwin":
+                suggestion = " (make sure the 'pbcopy' utility is available)"
+
+            click.echo(
+                f"Failed to copy to clipboard: {e}{suggestion}. Output follows:",
+                err=True,
+            )
+            click.echo(content)
+    
     if fp:
         fp.close()

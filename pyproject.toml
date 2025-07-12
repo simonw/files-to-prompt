@@ -13,6 +13,11 @@ dependencies = [
     "click"
 ]
 
+[project.optional-dependencies]
+clipboard = [
+    "pyperclip"
+]
+
 [project.urls]
 Homepage = "https://github.com/simonw/files-to-prompt"
 Changelog = "https://github.com/simonw/files-to-prompt/releases"
@@ -21,6 +26,3 @@ CI = "https://github.com/simonw/files-to-prompt/actions"
 
 [project.entry-points.console_scripts]
 files-to-prompt = "files_to_prompt.cli:cli"
-
-[project.optional-dependencies]
-test = ["pytest"]
