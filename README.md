@@ -58,6 +58,12 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory --ignore-gitignore
   ```
 
+- `--no-config`: Disable reading any `.files-to-prompt.toml` or user configuration files – only the options explicitly provided on the command-line will be used.
+
+  ```bash
+  files-to-prompt path/to/directory --no-config
+  ```
+
 - `-c/--cxml`: Output in Claude XML format.
 
   ```bash
@@ -97,6 +103,63 @@ This will output the contents of every file, with each file preceded by its rela
   ```bash
   find . -name "*.py" -print0 | files-to-prompt --null
   ```
+
+- `-C/--copy`: Copy the output to the clipboard instead of printing to stdout. Useful for quickly getting file contents ready to paste into an LLM chat interface.
+
+  ```bash
+  files-to-prompt path/to/directory --copy
+  ```
+  
+  This option cannot be used together with `-o/--output`. If the clipboard operation fails, the output will be printed to stdout as a fallback.
+
+Using `-C/--copy` requires the optional `pyperclip` dependency:
+
+```bash
+uv pip install 'files-to-prompt[clipboard]'
+```
+
+On Linux you also need `xclip` or `xsel`, and on macOS the standard `pbcopy` utility must be available.
+
+### Configuration files
+
+`files-to-prompt` can read default options from TOML configuration files so you don't have to repeat the same flags every time.
+
+Configuration files are discovered in the following order (first match wins):
+
+1. `.files-to-prompt.toml` in the current working directory
+2. Parent directories – walking upwards until the filesystem root
+3. User configuration file:
+   - Linux/macOS: `~/.config/files-to-prompt/config.toml`
+   - Windows: `%USERPROFILE%\.config\files-to-prompt\config.toml`
+
+The precedence order for options is **CLI > project config > user config > built-in defaults**.
+
+You can disable configuration loading entirely with the `--no-config` flag.
+
+#### Example configuration
+
+`.files-to-prompt.toml`:
+
+```toml
+[defaults]
+extensions = ["py", "md", "toml"]
+ignore = [
+    "*.pyc",
+    "__pycache__",
+    ".venv",
+    "*.egg-info",
+    ".pytest_cache",
+]
+line_numbers = true
+```
+
+Running `files-to-prompt .` in that directory is equivalent to:
+
+```bash
+files-to-prompt . -e py -e md -e toml \
+  --ignore "*.pyc" --ignore "__pycache__" --ignore ".venv" \
+  --ignore "*.egg-info" --ignore ".pytest_cache" --line-numbers
+```
 
 ### Example
 

@@ -10,7 +10,13 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
-    "click"
+    "click",
+    "tomli>=2; python_version < '3.11'"
+]
+
+[project.optional-dependencies]
+clipboard = [
+    "pyperclip"
 ]
 
 [project.urls]
@@ -21,6 +27,3 @@ CI = "https://github.com/simonw/files-to-prompt/actions"
 
 [project.entry-points.console_scripts]
 files-to-prompt = "files_to_prompt.cli:cli"
-
-[project.optional-dependencies]
-test = ["pytest"]
