@@ -17,6 +17,12 @@ Install this tool using `pip`:
 pip install files-to-prompt
 ```
 
+For more accurate token counting with the `--stats` flag, install with tiktoken support:
+
+```bash
+pip install 'files-to-prompt[stats]'
+```
+
 ## Usage
 
 To use `files-to-prompt`, provide the path to one or more files or directories you want to process:
@@ -96,6 +102,34 @@ This will output the contents of every file, with each file preceded by its rela
 
   ```bash
   find . -name "*.py" -print0 | files-to-prompt --null
+  ```
+
+- `--stats`: Show statistics about processed files, including file count, token count, and directory breakdown. Statistics are printed to stderr.
+
+  ```bash
+  files-to-prompt path/to/directory --stats
+  ```
+  
+  Example output (to stderr):
+  ```
+  Summary:
+  ========
+  Files processed: 69
+  Files ignored: 3
+  Total tokens: 202,477
+  Total lines: 21,363
+  
+  Top 20 files by token count:
+    17,563  engine/analysis.py
+    15,036  ui/run_benchmark_tab.py
+    11,975  tests/test_benchmark.py
+    ...
+  
+  Token count by directory:
+  tests        62,835 tokens (31.0%)
+  engine       62,082 tokens (30.7%)
+  ui           25,627 tokens (12.7%)
+  ...
   ```
 
 ### Example

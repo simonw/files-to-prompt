@@ -439,3 +439,159 @@ def test_markdown(tmpdir, option):
             "`````\n"
         )
         assert expected.strip() == actual.strip()
+
+
+def test_stats_basic(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.py", "w") as f:
+            f.write("def hello():\n    return 'world'")
+        with open("test_dir/file2.py", "w") as f:
+            f.write("# A comment\n" * 50)
+        
+        result = runner.invoke(cli, ["test_dir", "--stats"])
+        assert result.exit_code == 0
+        
+        # Check stdout has normal output
+        assert "test_dir/file1.py" in result.stdout
+        assert "def hello():" in result.stdout
+        
+        # Check stderr has stats
+        assert "Summary:" in result.stderr
+        assert "Files processed: 2" in result.stderr
+        assert "Total tokens:" in result.stderr
+        assert "Total lines:" in result.stderr
+        assert "Top 20 files by token count:" in result.stderr
+        assert "test_dir/file1.py" in result.stderr
+        assert "test_dir/file2.py" in result.stderr
+        assert "Token count by directory:" in result.stderr
+
+
+def test_stats_with_subdirectories(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("src/models")
+        os.makedirs("src/utils")
+        os.makedirs("tests")
+        
+        with open("src/models/user.py", "w") as f:
+            f.write("class User:\n    pass\n" * 20)
+        with open("src/utils/helpers.py", "w") as f:
+            f.write("def helper():\n    pass\n" * 10)
+        with open("tests/test_user.py", "w") as f:
+            f.write("def test_user():\n    pass\n" * 5)
+        with open("README.md", "w") as f:
+            f.write("# Project README\n" * 3)
+        
+        result = runner.invoke(cli, [".", "--stats"])
+        assert result.exit_code == 0
+        
+        # Check directory aggregation
+        assert "src" in result.stderr
+        assert "tests" in result.stderr
+        assert "(root)" in result.stderr  # For README.md
+        assert "tokens (" in result.stderr  # Check percentage display
+
+
+def test_stats_with_ignored_files(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        
+        # Create a binary file that will be skipped
+        with open("test_dir/binary.bin", "wb") as f:
+            f.write(b"\xff\xfe\xfd")
+        
+        # Create text files
+        with open("test_dir/text1.txt", "w") as f:
+            f.write("This is text")
+        with open("test_dir/text2.txt", "w") as f:
+            f.write("More text here")
+        
+        result = runner.invoke(cli, ["test_dir", "--stats"])
+        assert result.exit_code == 0
+        
+        # Should show ignored files
+        assert "Files ignored: 1" in result.stderr
+        assert "Files processed: 2" in result.stderr
+
+
+def test_stats_with_extensions_filter(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        
+        with open("test_dir/code.py", "w") as f:
+            f.write("print('hello')")
+        with open("test_dir/doc.md", "w") as f:
+            f.write("# Documentation")
+        with open("test_dir/data.json", "w") as f:
+            f.write('{"key": "value"}')
+        
+        result = runner.invoke(cli, ["test_dir", "--stats", "-e", "py", "-e", "md"])
+        assert result.exit_code == 0
+        
+        # Only .py and .md files should be processed
+        assert "Files processed: 2" in result.stderr
+        assert "test_dir/code.py" in result.stderr
+        assert "test_dir/doc.md" in result.stderr
+        assert "test_dir/data.json" not in result.stderr
+
+
+def test_stats_with_output_file(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file.txt", "w") as f:
+            f.write("Content")
+        
+        result = runner.invoke(cli, ["test_dir", "--stats", "-o", "output.txt"])
+        assert result.exit_code == 0
+        
+        # Stats should still go to stderr
+        assert "Summary:" in result.stderr
+        assert "Files processed: 1" in result.stderr
+        
+        # Main output should be in file
+        with open("output.txt", "r") as f:
+            content = f.read()
+            assert "test_dir/file.txt" in content
+            assert "Content" in content
+
+
+def test_stats_empty_directory(tmpdir):
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        os.makedirs("empty_dir")
+        
+        result = runner.invoke(cli, ["empty_dir", "--stats"])
+        assert result.exit_code == 0
+        
+        assert "Files processed: 0" in result.stderr
+        assert "Total tokens: 0" in result.stderr
+
+
+def test_stats_token_counting_accuracy(tmpdir):
+    """Test that token counting is working (tiktoken or fallback)."""
+    runner = CliRunner(mix_stderr=False)
+    with tmpdir.as_cwd():
+        # Create a file with known content
+        content = "The quick brown fox jumps over the lazy dog. " * 10
+        
+        with open("test.txt", "w") as f:
+            f.write(content)
+        
+        result = runner.invoke(cli, ["test.txt", "--stats"])
+        assert result.exit_code == 0
+        
+        # Should show some reasonable token count
+        # The exact count depends on whether tiktoken is installed
+        assert "Total tokens:" in result.stderr
+        # Extract token count from output
+        import re
+        match = re.search(r"Total tokens: ([\d,]+)", result.stderr)
+        assert match
+        token_count = int(match.group(1).replace(",", ""))
+        # Should be reasonable - not 0, not huge
+        assert 50 < token_count < 500  # Reasonable range for repeated sentence

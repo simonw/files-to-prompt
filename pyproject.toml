@@ -24,3 +24,4 @@ files-to-prompt = "files_to_prompt.cli:cli"
 
 [project.optional-dependencies]
 test = ["pytest"]
+stats = ["tiktoken>=0.5.0"]
