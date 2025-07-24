@@ -193,7 +193,7 @@ find . -mtime -1 | files-to-prompt README.md
 
 ### Claude XML Output
 
-Anthropic has provided [specific guidelines](https://docs.anthropic.com/claude/docs/long-context-window-tips) for optimally structuring prompts to take advantage of Claude's extended context window.
+Anthropic has provided [specific guidelines](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/long-context-tips) for optimally structuring prompts to take advantage of Claude's extended context window.
 
 To structure the output in this way, use the optional `--cxml` flag, which will produce output like this:
 
