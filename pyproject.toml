@@ -3,7 +3,7 @@ name = "files-to-prompt"
 version = "0.6"
 description = "Concatenate a directory full of files into a single prompt for use with LLMs"
 readme = "README.md"
-authors = [{name = "Simon Willison"}]
+authors = [{name = "Simon Willison"}, {name = "Dan MacKinlay"}]
 license = {text = "Apache-2.0"}
 requires-python = ">=3.8"
 classifiers = [

@@ -98,6 +98,29 @@ This will output the contents of every file, with each file preceded by its rela
   find . -name "*.py" -print0 | files-to-prompt --null
   ```
 
+- `--since <REF>`: Only include files changed since a Git revision (commit SHA, tag, or branch).
+
+  * Default scope is **working**: commits after `REF` + staged + unstaged + untracked (Git ignores respected).
+  * Paths given on the command line (or via stdin) further restrict the set.
+  * In this mode, `--ignore-gitignore` is ignored.
+
+  ```bash
+  files-to-prompt --since HEAD
+  files-to-prompt --since v1.2.0 -e py
+  files-to-prompt --since main src tests
+  ```
+
+- `--since-scope <working|committed|staged>`: Control what "changed since REF" means (default: `working`).
+
+  * `working`: commits after `REF` + staged + unstaged + untracked
+  * `committed`: only commits after `REF` (no staged/unstaged/untracked)
+  * `staged`: only index vs `REF` (no unstaged/untracked)
+
+  ```bash
+  files-to-prompt --since v1.2.0 --since-scope committed
+  files-to-prompt --since HEAD --since-scope staged
+  ```
+
 ### Example
 
 Suppose you have a directory structure like this:
@@ -190,6 +213,8 @@ You can mix and match paths from command line arguments and stdin:
 # Include files modified in the last day, and also include README.md
 find . -mtime -1 | files-to-prompt README.md
 ```
+
+**Notes for `--since`**: paths are repo-root-relative; deleted files are not emitted. Untracked files are included only with `--since-scope working`. Other filters (`-e/--extension`, `--ignore`, `--ignore-files-only`, `--include-hidden`) still apply.
 
 ### Claude XML Output
 

@@ -1,10 +1,74 @@
 import os
 import sys
+import subprocess
 from fnmatch import fnmatch
 
 import click
 
 global_index = 1
+
+
+def _run_git(args, cwd):
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        return proc.stdout.strip()
+    except FileNotFoundError:
+        raise click.ClickException("git not found on PATH; --since requires Git")
+    except subprocess.CalledProcessError as e:
+        raise click.ClickException(e.stderr.strip() or e.stdout.strip() or str(e))
+
+
+def _git_repo_root():
+    inside = _run_git(["rev-parse", "--is-inside-work-tree"], os.getcwd())
+    if inside != "true":
+        raise click.ClickException(
+            "The --since option requires running inside a Git repository"
+        )
+    return _run_git(["rev-parse", "--show-toplevel"], os.getcwd())
+
+
+def _validate_git_ref(ref, repo_root):
+    try:
+        _run_git(["rev-parse", "--quiet", "--verify", f"{ref}^{{commit}}"], repo_root)
+    except click.ClickException as e:
+        raise click.ClickException(f"Invalid Git revision '{ref}'.")
+
+
+def _git_changed_paths_since(ref, repo_root, scope="working"):
+    tracked = set()
+
+    if scope == "working":
+        # tracked changes between REF and working tree
+        diff_out = _run_git(["diff", "--name-only", ref, "--"], repo_root)
+        tracked = set(line for line in diff_out.splitlines() if line)
+    elif scope == "committed":
+        # only commits after REF
+        diff_out = _run_git(["diff", "--name-only", f"{ref}..HEAD", "--"], repo_root)
+        tracked = set(line for line in diff_out.splitlines() if line)
+    elif scope == "staged":
+        # only what's staged in index relative to REF
+        diff_out = _run_git(["diff", "--name-only", "--cached", ref, "--"], repo_root)
+        tracked = set(line for line in diff_out.splitlines() if line)
+
+    # untracked files only for working scope
+    untracked = set()
+    if scope == "working":
+        untracked_out = _run_git(
+            ["ls-files", "--others", "--exclude-standard"], repo_root
+        )
+        untracked = set(line for line in untracked_out.splitlines() if line)
+
+    candidates = tracked | untracked
+    # only existing files
+    return {p for p in candidates if os.path.isfile(os.path.join(repo_root, p))}
+
 
 EXT_TO_LANG = {
     "py": "python",
@@ -244,6 +308,24 @@ def read_paths_from_stdin(use_null_separator):
     is_flag=True,
     help="Use NUL character as separator when reading from stdin",
 )
+@click.option(
+    "since_ref",
+    "--since",
+    metavar="REF",
+    help=(
+        "Only include files changed since this Git revision (commit/tag/branch). "
+        "Paths given on the command line (or stdin) further restrict results. "
+        "In this mode, --ignore-gitignore is ignored."
+    ),
+)
+@click.option(
+    "since_scope",
+    "--since-scope",
+    type=click.Choice(["working", "committed", "staged"]),
+    default="working",
+    show_default=True,
+    help="Which changes to include relative to REF: 'working' = commits after REF + staged + unstaged + untracked; 'committed' = commits after REF; 'staged' = index vs REF.",
+)
 @click.version_option()
 def cli(
     paths,
@@ -257,6 +339,8 @@ def cli(
     markdown,
     line_numbers,
     null,
+    since_ref,
+    since_scope,
 ):
     """
     Takes one or more paths to files or directories and outputs every file,
@@ -301,6 +385,88 @@ def cli(
 
     # Combine paths from arguments and stdin
     paths = [*paths, *stdin_paths]
+
+    # Handle --since specially
+    if since_ref:
+        if ignore_gitignore:
+            click.echo(
+                click.style(
+                    "--ignore-gitignore is ignored with --since; Git's ignore rules always apply.",
+                    fg="yellow",
+                ),
+                err=True,
+            )
+        repo_root = _git_repo_root()
+        _validate_git_ref(since_ref, repo_root)
+        changed = _git_changed_paths_since(since_ref, repo_root, since_scope)
+
+        # restrict to explicit paths if given
+        if paths:
+            abs_paths = [os.path.abspath(p) for p in paths]
+            changed = {
+                rel
+                for rel in changed
+                if any(
+                    os.path.commonpath([os.path.join(repo_root, rel), ap]) == ap
+                    for ap in abs_paths
+                )
+            }
+
+        # apply include_hidden / ignore / extensions filters
+        rels = []
+        for rel in sorted(changed):
+            rel_norm = os.path.normpath(rel.replace("/", os.sep))
+            if not include_hidden and any(
+                part.startswith(".") for part in rel_norm.split(os.sep)
+            ):
+                continue
+            if extensions and not rel.endswith(tuple(extensions)):
+                continue
+            if ignore_patterns:
+                base = os.path.basename(rel_norm)
+                if ignore_files_only:
+                    if any(fnmatch(base, pat) for pat in ignore_patterns):
+                        continue
+                else:
+                    parts = rel_norm.split(os.sep)
+                    if any(
+                        fnmatch(part, pat) for part in parts for pat in ignore_patterns
+                    ):
+                        continue
+            rels.append(rel)
+
+        writer = click.echo
+        fp = None
+        if output_file:
+            fp = open(output_file, "w", encoding="utf-8")
+            writer = lambda s: print(s, file=fp)
+        if claude_xml:
+            writer("<documents>")
+        for rel in rels:
+            try:
+                # For staged scope, read content from index; otherwise from working tree
+                if since_scope == "staged":
+                    content = _run_git(["show", f":{rel}"], repo_root)
+                else:
+                    abs_fp = os.path.join(repo_root, rel)
+                    with open(abs_fp, "r") as f:
+                        content = f.read()
+
+                print_path(writer, rel, content, claude_xml, markdown, line_numbers)
+            except (
+                UnicodeDecodeError,
+                subprocess.CalledProcessError,
+                click.ClickException,
+            ):
+                warning_message = (
+                    f"Warning: Skipping file {rel} due to Unicode/Git error"
+                )
+                click.echo(click.style(warning_message, fg="red"), err=True)
+        if claude_xml:
+            writer("</documents>")
+        if fp:
+            fp.close()
+        return
 
     gitignore_rules = []
     writer = click.echo
