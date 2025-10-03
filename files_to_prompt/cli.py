@@ -125,16 +125,20 @@ def process_path(
                 files = [f for f in files if not f.startswith(".")]
 
             if not ignore_gitignore:
-                gitignore_rules.extend(read_gitignore(root))
+                # Build the gitignore rules for this directory
+                # by combining parent rules with this directory's rules
+                current_rules = gitignore_rules.copy()
+                current_rules.extend(read_gitignore(root))
+
                 dirs[:] = [
                     d
                     for d in dirs
-                    if not should_ignore(os.path.join(root, d), gitignore_rules)
+                    if not should_ignore(os.path.join(root, d), current_rules)
                 ]
                 files = [
                     f
                     for f in files
-                    if not should_ignore(os.path.join(root, f), gitignore_rules)
+                    if not should_ignore(os.path.join(root, f), current_rules)
                 ]
 
             if ignore_patterns:
