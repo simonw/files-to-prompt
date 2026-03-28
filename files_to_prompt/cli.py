@@ -98,6 +98,10 @@ def print_as_markdown(writer, path, content, line_numbers):
     writer(f"{backticks}")
 
 
+def normalize_path(path):
+    return os.path.normcase(os.path.abspath(path))
+
+
 def process_path(
     path,
     extensions,
@@ -110,8 +114,12 @@ def process_path(
     claude_xml,
     markdown,
     line_numbers=False,
+    skip_paths=None,
 ):
+    skip_paths = skip_paths or set()
     if os.path.isfile(path):
+        if normalize_path(path) in skip_paths:
+            return
         try:
             with open(path, "r") as f:
                 print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
@@ -155,6 +163,8 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
+                if normalize_path(file_path) in skip_paths:
+                    continue
                 try:
                     with open(file_path, "r") as f:
                         print_path(
@@ -305,7 +315,9 @@ def cli(
     gitignore_rules = []
     writer = click.echo
     fp = None
+    skip_paths = set()
     if output_file:
+        skip_paths.add(normalize_path(output_file))
         fp = open(output_file, "w", encoding="utf-8")
         writer = lambda s: print(s, file=fp)
     for path in paths:
@@ -327,6 +339,7 @@ def cli(
             claude_xml,
             markdown,
             line_numbers,
+            skip_paths,
         )
     if claude_xml:
         writer("</documents>")

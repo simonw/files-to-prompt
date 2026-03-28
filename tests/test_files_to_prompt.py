@@ -319,8 +319,29 @@ test_dir/file2.txt
 Contents of file2.txt
 
 ---
-"""
+        """
         assert expected.strip() == actual.strip()
+
+
+def test_output_file_is_not_included_in_output(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        with open("a.txt", "w") as f:
+            f.write("Contents of a.txt")
+        with open("z.txt", "w") as f:
+            f.write("Contents of z.txt")
+
+        result = runner.invoke(cli, [".", "-o", "prompt.txt"], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        with open("prompt.txt", "r") as f:
+            actual = f.read().replace("\\", "/")
+
+        assert "./a.txt" in actual
+        assert "Contents of a.txt" in actual
+        assert "./z.txt" in actual
+        assert "Contents of z.txt" in actual
+        assert "./prompt.txt" not in actual
 
 
 def test_line_numbers(tmpdir):
