@@ -319,8 +319,33 @@ test_dir/file2.txt
 Contents of file2.txt
 
 ---
-"""
+        """
         assert expected.strip() == actual.strip()
+
+
+@pytest.mark.parametrize("arg", ("-o", "--output"))
+def test_output_option_does_not_include_output_file(tmpdir, arg):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1.txt")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2.txt")
+
+        output_file = "test_dir/prompt.txt"
+        result = runner.invoke(
+            cli, ["test_dir", arg, output_file], catch_exceptions=False
+        )
+
+        assert result.exit_code == 0
+        with open(output_file, "r", encoding="utf-8") as f:
+            actual = f.read()
+        normalized_actual = actual.replace("\\", "/")
+
+        assert "test_dir/prompt.txt" not in normalized_actual
+        assert "test_dir/file1.txt" in normalized_actual
+        assert "test_dir/file2.txt" in normalized_actual
 
 
 def test_line_numbers(tmpdir):
