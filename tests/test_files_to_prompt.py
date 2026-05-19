@@ -439,3 +439,19 @@ def test_markdown(tmpdir, option):
             "`````\n"
         )
         assert expected.strip() == actual.strip()
+
+
+def test_unicode_replace_on_binary_file(tmpdir):
+    """Files with non-UTF-8 bytes are included with replacement chars instead of skipped."""
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        # Write a file that contains invalid UTF-8 bytes
+        with open("test_dir/binary.txt", "wb") as f:
+            f.write(b"hello \xff world")
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert "test_dir/binary.txt" in result.output
+        # The replacement character U+FFFD should appear in the output
+        assert "�" in result.output

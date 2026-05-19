@@ -112,12 +112,8 @@ def process_path(
     line_numbers=False,
 ):
     if os.path.isfile(path):
-        try:
-            with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
-        except UnicodeDecodeError:
-            warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
-            click.echo(click.style(warning_message, fg="red"), err=True)
+        with open(path, "r", errors="replace") as f:
+            print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -155,21 +151,15 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, "r") as f:
-                        print_path(
-                            writer,
-                            file_path,
-                            f.read(),
-                            claude_xml,
-                            markdown,
-                            line_numbers,
-                        )
-                except UnicodeDecodeError:
-                    warning_message = (
-                        f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
+                with open(file_path, "r", errors="replace") as f:
+                    print_path(
+                        writer,
+                        file_path,
+                        f.read(),
+                        claude_xml,
+                        markdown,
+                        line_numbers,
                     )
-                    click.echo(click.style(warning_message, fg="red"), err=True)
 
 
 def read_paths_from_stdin(use_null_separator):
