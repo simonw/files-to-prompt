@@ -404,6 +404,24 @@ def test_paths_from_arguments_and_stdin(tmpdir):
         assert "Contents of file2" in result.output
 
 
+def test_output_file_excluded_from_scan(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        output_file = str(tmpdir.join("test_dir/output.txt"))
+        result = runner.invoke(
+            cli, ["test_dir", "-o", output_file], catch_exceptions=False
+        )
+        assert result.exit_code == 0
+        with open(output_file, "r") as f:
+            actual = f.read()
+        # The output file itself must not appear in the output
+        assert "output.txt" not in actual
+        assert "Contents of file1" in actual
+
+
 @pytest.mark.parametrize("option", ("-m", "--markdown"))
 def test_markdown(tmpdir, option):
     runner = CliRunner()

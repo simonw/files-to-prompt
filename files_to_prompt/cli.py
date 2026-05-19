@@ -110,8 +110,11 @@ def process_path(
     claude_xml,
     markdown,
     line_numbers=False,
+    output_file_abs=None,
 ):
     if os.path.isfile(path):
+        if output_file_abs and os.path.abspath(path) == output_file_abs:
+            return
         try:
             with open(path, "r") as f:
                 print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
@@ -155,6 +158,8 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
+                if output_file_abs and os.path.abspath(file_path) == output_file_abs:
+                    continue
                 try:
                     with open(file_path, "r") as f:
                         print_path(
@@ -305,6 +310,7 @@ def cli(
     gitignore_rules = []
     writer = click.echo
     fp = None
+    output_file_abs = os.path.abspath(output_file) if output_file else None
     if output_file:
         fp = open(output_file, "w", encoding="utf-8")
         writer = lambda s: print(s, file=fp)
@@ -327,6 +333,7 @@ def cli(
             claude_xml,
             markdown,
             line_numbers,
+            output_file_abs,
         )
     if claude_xml:
         writer("</documents>")
