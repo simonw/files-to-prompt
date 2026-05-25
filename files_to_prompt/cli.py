@@ -113,7 +113,16 @@ def process_path(
 ):
     if os.path.isfile(path):
         with open(path, "r", errors="replace") as f:
-            print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
+            content = f.read()
+        if "�" in content:
+            click.echo(
+                click.style(
+                    f"Warning: {path} contains non-UTF-8 bytes; replacement characters inserted.",
+                    fg="yellow",
+                ),
+                err=True,
+            )
+        print_path(writer, path, content, claude_xml, markdown, line_numbers)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -152,14 +161,23 @@ def process_path(
             for file in sorted(files):
                 file_path = os.path.join(root, file)
                 with open(file_path, "r", errors="replace") as f:
-                    print_path(
-                        writer,
-                        file_path,
-                        f.read(),
-                        claude_xml,
-                        markdown,
-                        line_numbers,
+                    content = f.read()
+                if "�" in content:
+                    click.echo(
+                        click.style(
+                            f"Warning: {file_path} contains non-UTF-8 bytes; replacement characters inserted.",
+                            fg="yellow",
+                        ),
+                        err=True,
                     )
+                print_path(
+                    writer,
+                    file_path,
+                    content,
+                    claude_xml,
+                    markdown,
+                    line_numbers,
+                )
 
 
 def read_paths_from_stdin(use_null_separator):
