@@ -235,7 +235,7 @@ def test_mixed_paths_with_options(tmpdir):
 
 
 def test_binary_file_warning(tmpdir):
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
         with open("test_dir/binary_file.bin", "wb") as f:
@@ -246,15 +246,13 @@ def test_binary_file_warning(tmpdir):
         result = runner.invoke(cli, ["test_dir"])
         assert result.exit_code == 0
 
-        stdout = result.stdout
-        stderr = result.stderr
-
-        assert "test_dir/text_file.txt" in stdout
-        assert "This is a text file" in stdout
-        assert "\ntest_dir/binary_file.bin" not in stdout
+        assert "test_dir/text_file.txt" in result.stdout
+        assert "This is a text file" in result.stdout
+        assert "test_dir/binary_file.bin" in result.stdout
+        assert "�" in result.stdout
         assert (
-            "Warning: Skipping file test_dir/binary_file.bin due to UnicodeDecodeError"
-            in stderr
+            "Warning: test_dir/binary_file.bin contains non-UTF-8 bytes; replacement characters inserted."
+            in result.stderr
         )
 
 
@@ -439,3 +437,21 @@ def test_markdown(tmpdir, option):
             "`````\n"
         )
         assert expected.strip() == actual.strip()
+
+
+def test_unicode_replace_on_binary_file(tmpdir):
+    """Files with non-UTF-8 bytes are included with replacement chars and a warning."""
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/binary.txt", "wb") as f:
+            f.write(b"hello \xff world")
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert "test_dir/binary.txt" in result.stdout
+        assert "�" in result.stdout
+        assert (
+            "Warning: test_dir/binary.txt contains non-UTF-8 bytes; replacement characters inserted."
+            in result.stderr
+        )
