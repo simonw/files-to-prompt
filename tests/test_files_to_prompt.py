@@ -258,6 +258,33 @@ def test_binary_file_warning(tmpdir):
         )
 
 
+def test_unreadable_file_is_skipped_not_fatal(tmpdir):
+    # A single entry that cannot be opened (here a broken symlink, which raises
+    # FileNotFoundError) must not abort the whole run and discard the other
+    # files' output. It should skip+warn, exactly like a binary file.
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/a.txt", "w") as f:
+            f.write("Contents of A")
+        with open("test_dir/z.txt", "w") as f:
+            f.write("Contents of Z")
+        os.symlink("does-not-exist", "test_dir/m_broken.txt")
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert result.exception is None
+        # Both readable files survive; the bad entry between them loses no output
+        assert "Contents of A" in result.output
+        assert "Contents of Z" in result.output
+        # click < 8.2 mixes stderr into output; 8.2+ keeps it separate.
+        try:
+            stderr = result.stderr
+        except ValueError:
+            stderr = ""
+        assert "Warning: Skipping file test_dir/m_broken.txt" in result.output + stderr
+
+
 @pytest.mark.parametrize(
     "args", (["test_dir"], ["test_dir/file1.txt", "test_dir/file2.txt"])
 )
