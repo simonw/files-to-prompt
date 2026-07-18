@@ -36,10 +36,19 @@ def should_ignore(path, gitignore_rules):
 def read_gitignore(path):
     gitignore_path = os.path.join(path, ".gitignore")
     if os.path.isfile(gitignore_path):
-        with open(gitignore_path, "r") as f:
-            return [
-                line.strip() for line in f if line.strip() and not line.startswith("#")
-            ]
+        try:
+            with open(gitignore_path, "r") as f:
+                return [
+                    line.strip()
+                    for line in f
+                    if line.strip() and not line.startswith("#")
+                ]
+        except UnicodeDecodeError:
+            warning_message = (
+                f"Warning: Skipping {gitignore_path} due to UnicodeDecodeError"
+            )
+            click.echo(click.style(warning_message, fg="red"), err=True)
+            return []
     return []
 
 

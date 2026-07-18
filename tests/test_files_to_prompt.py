@@ -90,6 +90,22 @@ def test_ignore_gitignore(tmpdir):
         }
 
 
+def test_binary_gitignore_does_not_crash(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/.gitignore", "wb") as f:
+            f.write(b"\xff\xfe\x00not-utf8")
+        with open("test_dir/ok.txt", "w") as f:
+            f.write("still readable")
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert "test_dir/ok.txt" in result.output
+        assert "still readable" in result.output
+        assert "UnicodeDecodeError" in result.stderr
+
+
 def test_multiple_paths(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
