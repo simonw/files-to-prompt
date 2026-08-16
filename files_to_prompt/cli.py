@@ -24,6 +24,24 @@ EXT_TO_LANG = {
 }
 
 
+def skip_symlink_reason(file_path, root):
+    """Why this symlink should not be read, or None if it is fine to read.
+
+    os.walk() does not follow directory symlinks, but a symlink to a *file* is just another
+    entry in `files`, and open() follows it wherever it points. Two things go wrong without
+    this: a repo containing `links/etc-passwd -> /etc/passwd` puts /etc/passwd in the prompt
+    you are about to paste somewhere, and a broken symlink raises FileNotFoundError that ends
+    the run halfway through.
+    """
+    if not os.path.exists(file_path):
+        return "broken symlink -> {}".format(os.readlink(file_path))
+    target = os.path.realpath(file_path)
+    root = os.path.realpath(root)
+    if target != root and not target.startswith(root + os.sep):
+        return "symlink outside the tree -> {}".format(target)
+    return None
+
+
 def should_ignore(path, gitignore_rules):
     for rule in gitignore_rules:
         if fnmatch(os.path.basename(path), rule):
@@ -155,6 +173,12 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
+                if os.path.islink(file_path):
+                    reason = skip_symlink_reason(file_path, path)
+                    if reason:
+                        warning_message = f"Warning: Skipping {file_path}: {reason}"
+                        click.echo(click.style(warning_message, fg="red"), err=True)
+                        continue
                 try:
                     with open(file_path, "r") as f:
                         print_path(
