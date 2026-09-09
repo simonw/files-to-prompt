@@ -151,7 +151,10 @@ def process_path(
                 ]
 
             if extensions:
-                files = [f for f in files if f.endswith(extensions)]
+                suffixes = tuple(
+                    e if e.startswith(".") else "." + e for e in extensions
+                )
+                files = [f for f in files if f.endswith(suffixes)]
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)

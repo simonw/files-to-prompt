@@ -150,6 +150,40 @@ def test_ignore_patterns(tmpdir):
         result = runner.invoke(cli, ["test_dir", "--ignore", ""])
 
 
+@pytest.mark.parametrize("extensions", [("c", "h"), (".c", ".h"), ("c", ".h")])
+def test_extension_filter_requires_dot_boundary(tmpdir, extensions):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir/nested")
+        expected = {"main.c", "header.h", "nested/other.c"}
+        excluded = {"Makefile.inc", "build.sh", "no_extension_c"}
+        for name in expected | excluded:
+            with open("test_dir/" + name, "w") as f:
+                f.write("contents")
+        result = runner.invoke(
+            cli, ["test_dir", "-c", "-e", extensions[0], "-e", extensions[1]]
+        )
+        assert result.exit_code == 0
+        assert filenames_from_cxml(result.output) == {
+            os.path.join("test_dir", *name.split("/")) for name in expected
+        }
+
+
+@pytest.mark.parametrize("extension", ["tar.gz", ".tar.gz"])
+def test_compound_extension_filter(tmpdir, extension):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        for name in ["archive.tar.gz", "archive.notar.gz", "archive.gz"]:
+            with open("test_dir/" + name, "w") as f:
+                f.write("contents")
+        result = runner.invoke(cli, ["test_dir", "-c", "-e", extension])
+        assert result.exit_code == 0
+        assert filenames_from_cxml(result.output) == {
+            os.path.join("test_dir", "archive.tar.gz")
+        }
+
+
 def test_specific_extensions(tmpdir):
     runner = CliRunner()
     with tmpdir.as_cwd():
