@@ -29,7 +29,7 @@ This will output the contents of every file, with each file preceded by its rela
 
 ### Options
 
-- `-e/--extension <extension>`: Only include files with the specified extension. Can be used multiple times.
+- `-e/--extension <extension>`: Only include files with the specified extension. Can be used multiple times. The leading dot is optional (`-e py` and `-e .py` are equivalent). Compound extensions such as `-e tar.gz` are also supported.
 
   ```bash
   files-to-prompt path/to/directory -e txt -e md
