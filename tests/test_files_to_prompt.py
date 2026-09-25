@@ -235,7 +235,13 @@ def test_mixed_paths_with_options(tmpdir):
 
 
 def test_binary_file_warning(tmpdir):
-    runner = CliRunner(mix_stderr=False)
+    # Click >= 8.2 removed the ``mix_stderr`` argument (stdout and stderr are
+    # always captured separately now); older Click still needs it to split the
+    # streams. Feature-detect so the test works across both.
+    try:
+        runner = CliRunner(mix_stderr=False)
+    except TypeError:
+        runner = CliRunner()
     with tmpdir.as_cwd():
         os.makedirs("test_dir")
         with open("test_dir/binary_file.bin", "wb") as f:
