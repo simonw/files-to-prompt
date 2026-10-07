@@ -1,4 +1,5 @@
 import os
+from unittest import mock
 import pytest
 import re
 
@@ -439,3 +440,81 @@ def test_markdown(tmpdir, option):
             "`````\n"
         )
         assert expected.strip() == actual.strip()
+
+
+def test_copy_to_clipboard(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+        with open("test_dir/file2.txt", "w") as f:
+            f.write("Contents of file2")
+
+        clipboard = {}
+        with mock.patch(
+            "files_to_prompt.cli.pyperclip.copy",
+            side_effect=lambda text: clipboard.update(text=text),
+        ):
+            result = runner.invoke(cli, ["test_dir", "--copy"])
+
+        assert result.exit_code == 0
+        assert "Contents of file1" in clipboard["text"]
+        assert "Contents of file2" in clipboard["text"]
+
+
+def test_copy_to_clipboard_short_option(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+
+        clipboard = {}
+        with mock.patch(
+            "files_to_prompt.cli.pyperclip.copy",
+            side_effect=lambda text: clipboard.update(text=text),
+        ):
+            result = runner.invoke(cli, ["test_dir", "-C"])
+
+        assert result.exit_code == 0
+        assert "Contents of file1" in clipboard["text"]
+
+
+def test_copy_to_clipboard_with_output_file(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/file1.txt", "w") as f:
+            f.write("Contents of file1")
+
+        clipboard = {}
+        with mock.patch(
+            "files_to_prompt.cli.pyperclip.copy",
+            side_effect=lambda text: clipboard.update(text=text),
+        ):
+            result = runner.invoke(cli, ["test_dir", "--copy", "--output", "out.txt"])
+
+        assert result.exit_code == 0
+        assert "Contents of file1" in clipboard["text"]
+        with open("out.txt") as f:
+            assert "Contents of file1" in f.read()
+
+
+def test_copy_to_clipboard_markdown(tmpdir):
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/python.py", "w") as f:
+            f.write("This is python")
+
+        clipboard = {}
+        with mock.patch(
+            "files_to_prompt.cli.pyperclip.copy",
+            side_effect=lambda text: clipboard.update(text=text),
+        ):
+            result = runner.invoke(cli, ["test_dir", "--copy", "--markdown"])
+
+        assert result.exit_code == 0
+        assert "```python" in clipboard["text"]
+

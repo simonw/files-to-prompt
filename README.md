@@ -76,6 +76,12 @@ This will output the contents of every file, with each file preceded by its rela
   files-to-prompt path/to/directory -o output.txt
   ```
 
+- `-C/--copy`: Copy the output to the clipboard. It can be combined with `-o/--output` to write to a file and copy to the clipboard at the same time.
+
+  ```bash
+  files-to-prompt path/to/directory --copy
+  ```
+
 - `-n/--line-numbers`: Include line numbers in the output.
 
   ```bash

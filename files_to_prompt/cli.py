@@ -3,6 +3,7 @@ import sys
 from fnmatch import fnmatch
 
 import click
+import pyperclip
 
 global_index = 1
 
@@ -218,6 +219,13 @@ def read_paths_from_stdin(use_null_separator):
     help="Output to a file instead of stdout",
 )
 @click.option(
+    "copy",
+    "-C",
+    "--copy",
+    is_flag=True,
+    help="Copy the output to the clipboard",
+)
+@click.option(
     "claude_xml",
     "-c",
     "--cxml",
@@ -253,6 +261,7 @@ def cli(
     ignore_gitignore,
     ignore_patterns,
     output_file,
+    copy,
     claude_xml,
     markdown,
     line_numbers,
@@ -291,6 +300,10 @@ def cli(
         ```python
         Contents of file1.py
         ```
+
+    If the `--copy` flag is provided, the output is also copied to the
+    clipboard. It can be combined with `--output` to write to a file, copy to
+    the clipboard and still print to stdout.
     """
     # Reset global_index for pytest
     global global_index
@@ -303,11 +316,19 @@ def cli(
     paths = [*paths, *stdin_paths]
 
     gitignore_rules = []
-    writer = click.echo
+    writers = [click.echo]
     fp = None
     if output_file:
         fp = open(output_file, "w", encoding="utf-8")
-        writer = lambda s: print(s, file=fp)
+        writers = [lambda s: print(s, file=fp)]
+    clipboard_buffer = []
+
+    def writer(s):
+        for w in writers:
+            w(s)
+        if copy:
+            clipboard_buffer.append(s)
+
     for path in paths:
         if not os.path.exists(path):
             raise click.BadArgumentUsage(f"Path does not exist: {path}")
@@ -332,3 +353,5 @@ def cli(
         writer("</documents>")
     if fp:
         fp.close()
+    if copy:
+        pyperclip.copy("\n".join(clipboard_buffer))
