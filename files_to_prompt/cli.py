@@ -98,6 +98,22 @@ def print_as_markdown(writer, path, content, line_numbers):
     writer(f"{backticks}")
 
 
+def process_file(writer, path, cxml, markdown, line_numbers):
+    try:
+        with open(path, "r") as f:
+            content = f.read()
+    except (UnicodeDecodeError, OSError) as ex:
+        reason = (
+            "UnicodeDecodeError"
+            if isinstance(ex, UnicodeDecodeError)
+            else type(ex).__name__
+        )
+        warning_message = f"Warning: Skipping file {path} due to {reason}"
+        click.echo(click.style(warning_message, fg="red"), err=True)
+        return
+    print_path(writer, path, content, cxml, markdown, line_numbers)
+
+
 def process_path(
     path,
     extensions,
@@ -112,12 +128,7 @@ def process_path(
     line_numbers=False,
 ):
     if os.path.isfile(path):
-        try:
-            with open(path, "r") as f:
-                print_path(writer, path, f.read(), claude_xml, markdown, line_numbers)
-        except UnicodeDecodeError:
-            warning_message = f"Warning: Skipping file {path} due to UnicodeDecodeError"
-            click.echo(click.style(warning_message, fg="red"), err=True)
+        process_file(writer, path, claude_xml, markdown, line_numbers)
     elif os.path.isdir(path):
         for root, dirs, files in os.walk(path):
             if not include_hidden:
@@ -155,21 +166,9 @@ def process_path(
 
             for file in sorted(files):
                 file_path = os.path.join(root, file)
-                try:
-                    with open(file_path, "r") as f:
-                        print_path(
-                            writer,
-                            file_path,
-                            f.read(),
-                            claude_xml,
-                            markdown,
-                            line_numbers,
-                        )
-                except UnicodeDecodeError:
-                    warning_message = (
-                        f"Warning: Skipping file {file_path} due to UnicodeDecodeError"
-                    )
-                    click.echo(click.style(warning_message, fg="red"), err=True)
+                process_file(
+                    writer, file_path, claude_xml, markdown, line_numbers
+                )
 
 
 def read_paths_from_stdin(use_null_separator):
