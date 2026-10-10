@@ -258,6 +258,101 @@ def test_binary_file_warning(tmpdir):
         )
 
 
+@pytest.mark.skipif(os.name == "nt", reason="symlink creation needs privileges on Windows")
+def test_broken_symlink_is_skipped_not_fatal(tmpdir):
+    # A single entry that cannot be opened (here a broken symlink, which raises
+    # FileNotFoundError) must not abort the whole run and discard the other
+    # files' output. It should skip+warn, exactly like a binary file.
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/a.txt", "w") as f:
+            f.write("Contents of A")
+        with open("test_dir/z.txt", "w") as f:
+            f.write("Contents of Z")
+        os.symlink("does-not-exist", "test_dir/m_broken.txt")
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert result.exception is None
+        # Both readable files survive; the bad entry between them loses no output
+        assert "Contents of A" in result.stdout
+        assert "Contents of Z" in result.stdout
+        assert (
+            "Warning: Skipping file test_dir/m_broken.txt due to FileNotFoundError"
+            in result.stderr
+        )
+
+
+def test_permission_error_is_skipped_not_fatal(tmpdir, monkeypatch):
+    # A regular file that cannot be read (PermissionError) must not abort the
+    # whole run either - issue #79. Simulated without touching filesystem
+    # permissions so the test is reliable on every platform.
+    import builtins
+
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        os.makedirs("test_dir")
+        with open("test_dir/a.txt", "w") as f:
+            f.write("Contents of A")
+        with open("test_dir/m_locked.txt", "w") as f:
+            f.write("Contents of locked")
+        with open("test_dir/z.txt", "w") as f:
+            f.write("Contents of Z")
+
+        real_open = builtins.open
+
+        def fake_open(path, *args, **kwargs):
+            if str(path).endswith("m_locked.txt"):
+                raise PermissionError(13, "Permission denied")
+            return real_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", fake_open)
+
+        result = runner.invoke(cli, ["test_dir"])
+        assert result.exit_code == 0
+        assert result.exception is None
+        assert "Contents of A" in result.stdout
+        assert "Contents of Z" in result.stdout
+        assert "m_locked.txt" not in result.stdout
+        assert (
+            "Warning: Skipping file "
+            + os.path.join("test_dir", "m_locked.txt")
+            + " due to PermissionError"
+            in result.stderr
+        )
+
+
+def test_permission_error_on_direct_file_argument_is_skipped_not_fatal(
+    tmpdir, monkeypatch
+):
+    # The single-file code path shares the same handler: an unreadable file
+    # passed directly as an argument warns and exits 0 instead of crashing.
+    import builtins
+
+    runner = CliRunner()
+    with tmpdir.as_cwd():
+        with open("locked.txt", "w") as f:
+            f.write("Contents of locked")
+
+        real_open = builtins.open
+
+        def fake_open(path, *args, **kwargs):
+            if str(path).endswith("locked.txt"):
+                raise PermissionError(13, "Permission denied")
+            return real_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", fake_open)
+
+        result = runner.invoke(cli, ["locked.txt"])
+        assert result.exit_code == 0
+        assert result.exception is None
+        assert (
+            "Warning: Skipping file locked.txt due to PermissionError"
+            in result.stderr
+        )
+
+
 @pytest.mark.parametrize(
     "args", (["test_dir"], ["test_dir/file1.txt", "test_dir/file2.txt"])
 )
